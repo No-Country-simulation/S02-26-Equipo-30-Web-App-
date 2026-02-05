@@ -8,20 +8,15 @@ def deployApp(Map config) {
     def dbCredId = config.dbCredentialId ?: null
     def dockerCredId = config.dockerCredentialId ?: env.DOCKERHUB_CREDENTIALS
 
-    // Safeguard: ensure required credential IDs are present; fail early with a readable message
+    // Validation
     def missing = []
-    if (!sshCredId) { missing << 'sshKeyCredentialId (SSH key)'}
-    if (!vmHostCredId) { missing << 'vmHostCredentialId (VM host)'}
-    if (!(dbCredId || (dbUserCredId && dbPassCredId))) { missing << 'dbCredentialId or both dbUserCredentialId & dbPasswordCredentialId (DB credentials)'}
+    if (!sshCredId) { missing << 'sshKeyCredentialId'}
+    if (!vmHostCredId) { missing << 'vmHostCredentialId'}
+    if (!(dbCredId || (dbUserCredId && dbPassCredId))) { missing << 'dbCredentialId'}
 
     if (missing) {
-        echo "Missing required Jenkins credential IDs: ${missing.join(', ')}"
-        error("Missing required Jenkins credential IDs: ${missing.join(', ')}")
+        error("Missing required credentials: ${missing.join(', ')}")
     }
-
-    // Logging: print which credential IDs will be used (credential IDs are not secret values)
-    def dbBindingMethod = dbCredId ? "single(${dbCredId})" : "separate(user:${dbUserCredId},pass:${dbPassCredId})"
-    echo "Using credential IDs -> SSH_KEY: ${sshCredId}, VM_HOST: ${vmHostCredId}, DB: ${dbBindingMethod}, DOCKER_HUB: ${dockerCredId ?: 'none'}"
 
     def creds = [
         sshUserPrivateKey(credentialsId: sshCredId, keyFileVariable: 'SSH_KEY'),
@@ -31,12 +26,8 @@ def deployApp(Map config) {
     if (dbCredId) {
         creds << usernamePassword(credentialsId: dbCredId, usernameVariable: 'POSTGRES_USER', passwordVariable: 'POSTGRES_PASSWORD')
     } else {
-        if (dbUserCredId) {
-            creds << string(credentialsId: dbUserCredId, variable: 'POSTGRES_USER')
-        }
-        if (dbPassCredId) {
-            creds << string(credentialsId: dbPassCredId, variable: 'POSTGRES_PASSWORD')
-        }
+        if (dbUserCredId) { creds << string(credentialsId: dbUserCredId, variable: 'POSTGRES_USER') }
+        if (dbPassCredId) { creds << string(credentialsId: dbPassCredId, variable: 'POSTGRES_PASSWORD') }
     }
 
     if (dockerCredId) {
@@ -44,14 +35,14 @@ def deployApp(Map config) {
     }
 
     withCredentials(creds) {
-         def deployImage = (env.BRANCH_NAME == 'main') ? "edydockers/backend-horsetrust" : "edydockers/backend-horsetrust"
+         // UPDATED: Image name
+         def deployImage = "edydockers/backend-horsetrust"
          def imageTag = config.imageTag
          def fullBackendImage = "${deployImage}:${imageTag}"
 
          def pgHost = (env.POSTGRES_HOST ?: config.postgresHost) ?: 'database'
          def pgPort = (env.POSTGRES_PORT ?: config.postgresPort) ?: '5432'
          def pgDb   = (env.POSTGRES_DB   ?: config.postgresDb)   ?: 'horse-trust'
-         def pgUrl  = (env.POSTGRES_DOCKER_URL ?: config.postgresUrl) ?: null
          def pgUser = (env.POSTGRES_USER ?: config.postgresUser) ?: ''
          def pgPass = (env.POSTGRES_PASSWORD ?: config.postgresPassword) ?: ''
 
@@ -65,10 +56,6 @@ def deployApp(Map config) {
             POSTGRES_PASSWORD='${pgPass}'
          """
 
-         if (pgUrl) {
-            allEnvVars += " POSTGRES_DOCKER_URL='${pgUrl}'"
-         }
-
          if (dockerCredId) {
             allEnvVars += " DOCKERHUB_USER='${DOCKERHUB_USER}' DOCKERHUB_PASS='${DOCKERHUB_PASS}'"
          }
@@ -77,43 +64,28 @@ def deployApp(Map config) {
 
          echo "🚀 Deploying image: ${fullBackendImage} to ${VM_HOST}"
 
-         sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no infrastructure/docker/${composeFile} ${VM_USER}@${VM_HOST}:${VM_PROJECT_PATH}/docker-compose.yml"
+         // UPDATED PATH: Pointing to backend/horse-retail/infrastructure/docker/
+         sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no backend/horse-retail/infrastructure/docker/${composeFile} ${VM_USER}@${VM_HOST}:${VM_PROJECT_PATH}/docker-compose.yml"
 
          sh """
              ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} "
                  set -e
                  cd ${VM_PROJECT_PATH}
 
-                 echo '--- Ensuring horse-net exists ---'
+                 # Ensure network exists
                  sudo docker network create horse-net 2>/dev/null || true
 
-                 echo '--- Checking for legacy containers to remove ---'
-                 for c in sports-management-backend postgres-db-prod redis-cache; do
-                     if sudo docker ps -a --format '{{.Names}}' | grep -q '^'\$c'\$'; then
-                         PROJ=\$(sudo docker inspect --format '{{index ..Config.Labels "com.docker.compose.project"}}' \\${c} 2>/dev/null || echo '')
-                         if [ '\$PROJ' != 'sports-backend' ]; then
-                             echo 'Found container from different project: '\$c'. Removing...'
-                             sudo docker stop \$c 2>/dev/null || true
-                             sudo docker rm \$c 2>/dev/null || true
-                         fi
-                     fi
-                 done
-
-                 echo '--- Docker Hub login (if credentials present) ---'
+                 # Login to DockerHub
                  if [ -n "\$DOCKERHUB_USER" ]; then
-                     echo 'Logging into Docker Hub...'
                      echo "\$DOCKERHUB_PASS" | sudo env ${allEnvVars} docker login -u "\$DOCKERHUB_USER" --password-stdin || true
                  fi
 
-                 echo '--- Pulling new images ---'
+                 # Pull and Restart
                  sudo env ${allEnvVars} docker compose pull
-
-                 echo '--- Restarting services with Docker Compose V2 ---'
                  sudo env ${allEnvVars} docker compose up -d --force-recreate
 
-                 echo '--- Cleanup and verification ---'
+                 # Cleanup
                  sudo docker image prune -f
-                 sudo docker ps
              "
          """
      }
@@ -127,7 +99,7 @@ pipeline {
         maven 'maven3'
     }
 
-    triggers { githubPush() }
+    // No 'triggers' needed if configured in Jenkins UI, but keeping git push trigger is fine.
 
     environment {
         VM_USER                    = 'jenkins'
@@ -139,11 +111,14 @@ pipeline {
         VM_HOST_CRED               = 'vm-ip-98'
         DB_USER_CRED               = 'horsetrust-db-name'
         DB_PASS_CRED               = 'horsetrust-db-pass'
-     }
+        // Define paths for clarity
+        APP_DIR                    = 'backend/horse-retail'
+        DOCKER_DIR                 = 'backend/horse-retail/infrastructure/docker'
+    }
 
     stages {
         stage('Checkout Source Code') {
-            when { branch 'main' }
+            // REMOVED: when { branch 'main' }
             steps {
                 cleanWs(deleteDirs: true)
                 checkout scm
@@ -151,23 +126,26 @@ pipeline {
         }
 
         stage('Build Application') {
-            when { branch 'main' }
+            // REMOVED: when { branch 'main' }
             steps {
-                sh "mvn clean install -DskipTests"
+                // UPDATED PATH: Point to pom.xml inside the subdirectory
+                sh "mvn -f ${APP_DIR}/pom.xml clean install -DskipTests"
             }
         }
 
         stage('Build Docker Image') {
-            when { branch 'main' }
+            // REMOVED: when { branch 'main' }
             steps {
                 script {
-                    sh "docker build -t ${IMAGE_NAME} -f infrastructure/docker/Dockerfile ."
+                    // UPDATED PATH: Build using the Dockerfile in subfolder, set context to app folder
+                    // We build from root, pointing to specific Dockerfile
+                    sh "docker build -t ${IMAGE_NAME} -f ${DOCKER_DIR}/Dockerfile ${APP_DIR}"
                 }
             }
         }
 
         stage('Push Docker Image') {
-            when { branch 'main' }
+            // REMOVED: when { branch 'main' }
             steps {
                 script {
                     def imageToPush = "edydockers/backend-horsetrust"
@@ -177,15 +155,11 @@ pipeline {
                     withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CREDENTIALS, usernameVariable: 'DUSER', passwordVariable: 'DPASS')]) {
                         sh """#!/bin/bash
                             set -euo pipefail
-
-                            echo "Logging in to Docker Hub..."
                             echo '${DPASS}' | docker login -u '${DUSER}' --password-stdin
 
-                            echo "Pushing Build Tag: ${imageToPush}:${imageTag}"
                             docker tag ${IMAGE_NAME} ${imageToPush}:${imageTag}
                             docker push ${imageToPush}:${imageTag}
 
-                            echo "Pushing Latest Tag: ${imageToPush}:${latestTag}"
                             docker tag ${IMAGE_NAME} ${imageToPush}:${latestTag}
                             docker push ${imageToPush}:${latestTag}
 
@@ -197,7 +171,7 @@ pipeline {
         }
 
         stage('Deploy to Production') {
-            when { branch 'main' }
+            // REMOVED: when { branch 'main' }
             steps {
                 script {
                     deployApp(
@@ -217,25 +191,9 @@ pipeline {
     post {
         always {
             script {
-                if (env.BRANCH_NAME == 'main') {
-                    sh "docker rmi ${IMAGE_NAME} || true"
-                }
+                sh "docker rmi ${IMAGE_NAME} || true"
             }
             cleanWs()
         }
-        // success {
-        //     script {
-        //         if (env.BRANCH_NAME == 'main') {
-        //             slackSend (channel: SLACK_CHANNEL, color: 'good', message: "✅ SUCCESS: '${JOB_NAME}' on branch '${BRANCH_NAME}' finished successfully.")
-        //         }
-        //     }
-        // }
-        // failure {
-        //     script {
-        //         if (env.BRANCH_NAME == 'main') {
-        //             slackSend (channel: SLACK_CHANNEL, color: 'danger', message: "❌ FAILURE: '${JOB_NAME}' on branch '${BRANCH_NAME}' failed.")
-        //         }
-        //     }
-        // }
     }
 }
