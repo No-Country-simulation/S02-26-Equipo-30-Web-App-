@@ -1,61 +1,122 @@
 def deployApp(Map config) {
     def composeFile = config.composeFile ?: 'docker-compose.yml'
 
-    withCredentials([
-        sshUserPrivateKey(credentialsId: config.sshKeyCredentialId, keyFileVariable: 'SSH_KEY'),
-        string(credentialsId: config.dbUserCredentialId, variable: 'DB_USER'),
-        string(credentialsId: config.dbPasswordCredentialId, variable: 'DB_PASSWORD'),
-        string(credentialsId: config.vmHostCredentialId, variable: 'VM_HOST'),
+    def sshCredId = config.sshKeyCredentialId ?: env.SSH_KEY_CRED
+    def vmHostCredId = config.vmHostCredentialId ?: env.VM_HOST_CRED
+    def dbUserCredId = config.dbUserCredentialId ?: env.DB_USER_CRED
+    def dbPassCredId = config.dbPasswordCredentialId ?: env.DB_PASS_CRED
+    def dbCredId = config.dbCredentialId ?: null
+    def dockerCredId = config.dockerCredentialId ?: env.DOCKERHUB_CREDENTIALS
 
-    ]) {
-        def deployImage = (env.BRANCH_NAME == 'main') ? "edydockers/backend-horsetrust" : "edydockers/backend-horsetrust"
-        def imageTag = config.imageTag
-        def fullBackendImage = "${deployImage}:${imageTag}"
+    // Safeguard: ensure required credential IDs are present; fail early with a readable message
+    def missing = []
+    if (!sshCredId) { missing << 'sshKeyCredentialId (SSH key)'}
+    if (!vmHostCredId) { missing << 'vmHostCredentialId (VM host)'}
+    if (!(dbCredId || (dbUserCredId && dbPassCredId))) { missing << 'dbCredentialId or both dbUserCredentialId & dbPasswordCredentialId (DB credentials)'}
 
-        def allEnvVars = """
-            BACKEND_IMAGE='${fullBackendImage}'
-            DB_USER='${DB_USER}'
-            DB_PASSWORD='${DB_PASSWORD}'
-            COMPOSE_PROJECT_NAME='horsetrust-backend'
-        """.stripIndent().trim().replaceAll('\n', ' ')
-
-        echo "🚀 Deploying image: ${fullBackendImage} to ${VM_HOST}"
-
-        sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no infrastructure/docker/${composeFile} ${VM_USER}@${VM_HOST}:${VM_PROJECT_PATH}/docker-compose.yml"
-
-        sh """
-            ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} "
-                set -e
-                cd ${VM_PROJECT_PATH}
-
-                echo '--- Ensuring horse-net exists ---'
-                sudo docker network create horse-net 2>/dev/null || true
-
-                echo '--- Checking for legacy containers to remove ---'
-                for c in sports-management-backend postgres-db-prod redis-cache; do
-                    if sudo docker ps -a --format '{{.Names}}' | grep -q '^'\\\$c'\$'; then
-                        # FIXED: Removed extra dot and incorrect dollar sign placement
-                        PROJ=\\\$(sudo docker inspect --format '{{index .Config.Labels \"com.docker.compose.project\"}}' \\\$c 2>/dev/null || echo '')
-                        if [ '\\\$PROJ' != 'sports-backend' ]; then
-                            echo 'Found container from different project: '\\\$c'. Removing...'
-                            sudo docker stop \\\$c 2>/dev/null || true
-                            sudo docker rm \\\$c 2>/dev/null || true
-                        fi
-                    fi
-                done
-
-                echo '--- Pulling new images ---'
-                sudo env ${allEnvVars} docker compose pull
-
-                echo '--- Restarting services with Docker Compose V2 ---'
-                sudo env ${allEnvVars} docker compose up -d --force-recreate
-
-                echo '--- Cleanup and verification ---'
-                sudo docker image prune -f
-                sudo docker ps
-            "
-        """
+    if (missing) {
+        echo "Missing required Jenkins credential IDs: ${missing.join(', ')}"
+        error("Missing required Jenkins credential IDs: ${missing.join(', ')}")
     }
+
+    // Logging: print which credential IDs will be used (credential IDs are not secret values)
+    def dbBindingMethod = dbCredId ? "single(${dbCredId})" : "separate(user:${dbUserCredId},pass:${dbPassCredId})"
+    echo "Using credential IDs -> SSH_KEY: ${sshCredId}, VM_HOST: ${vmHostCredId}, DB: ${dbBindingMethod}, DOCKER_HUB: ${dockerCredId ?: 'none'}"
+
+    def creds = [
+        sshUserPrivateKey(credentialsId: sshCredId, keyFileVariable: 'SSH_KEY'),
+        string(credentialsId: vmHostCredId, variable: 'VM_HOST')
+    ]
+
+    if (dbCredId) {
+        creds << usernamePassword(credentialsId: dbCredId, usernameVariable: 'POSTGRES_USER', passwordVariable: 'POSTGRES_PASSWORD')
+    } else {
+        if (dbUserCredId) {
+            creds << string(credentialsId: dbUserCredId, variable: 'POSTGRES_USER')
+        }
+        if (dbPassCredId) {
+            creds << string(credentialsId: dbPassCredId, variable: 'POSTGRES_PASSWORD')
+        }
+    }
+
+    if (dockerCredId) {
+        creds << usernamePassword(credentialsId: dockerCredId, usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')
+    }
+
+    withCredentials(creds) {
+         def deployImage = (env.BRANCH_NAME == 'main') ? "edydockers/backend-horsetrust" : "edydockers/backend-horsetrust"
+         def imageTag = config.imageTag
+         def fullBackendImage = "${deployImage}:${imageTag}"
+
+         def pgHost = (env.POSTGRES_HOST ?: config.postgresHost) ?: 'database'
+         def pgPort = (env.POSTGRES_PORT ?: config.postgresPort) ?: '5432'
+         def pgDb   = (env.POSTGRES_DB   ?: config.postgresDb)   ?: 'horse-trust'
+         def pgUrl  = (env.POSTGRES_DOCKER_URL ?: config.postgresUrl) ?: null
+         def pgUser = (env.POSTGRES_USER ?: config.postgresUser) ?: ''
+         def pgPass = (env.POSTGRES_PASSWORD ?: config.postgresPassword) ?: ''
+
+         def allEnvVars = """
+            BACKEND_IMAGE='${fullBackendImage}'
+            COMPOSE_PROJECT_NAME='horsetrust-backend'
+            POSTGRES_HOST='${pgHost}'
+            POSTGRES_PORT='${pgPort}'
+            POSTGRES_DB='${pgDb}'
+            POSTGRES_USER='${pgUser}'
+            POSTGRES_PASSWORD='${pgPass}'
+         """
+
+         if (pgUrl) {
+            allEnvVars += " POSTGRES_DOCKER_URL='${pgUrl}'"
+         }
+
+         if (dockerCredId) {
+            allEnvVars += " DOCKERHUB_USER='${DOCKERHUB_USER}' DOCKERHUB_PASS='${DOCKERHUB_PASS}'"
+         }
+
+         allEnvVars = allEnvVars.stripIndent().trim().replaceAll('\n', ' ')
+
+         echo "🚀 Deploying image: ${fullBackendImage} to ${VM_HOST}"
+
+         sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no infrastructure/docker/${composeFile} ${VM_USER}@${VM_HOST}:${VM_PROJECT_PATH}/docker-compose.yml"
+
+         sh """
+             ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} "
+                 set -e
+                 cd ${VM_PROJECT_PATH}
+
+                 echo '--- Ensuring horse-net exists ---'
+                 sudo docker network create horse-net 2>/dev/null || true
+
+                 echo '--- Checking for legacy containers to remove ---'
+                 for c in sports-management-backend postgres-db-prod redis-cache; do
+                     if sudo docker ps -a --format '{{.Names}}' | grep -q '^'\$c'\$'; then
+                         PROJ=\$(sudo docker inspect --format '{{index ..Config.Labels "com.docker.compose.project"}}' \\${c} 2>/dev/null || echo '')
+                         if [ '\$PROJ' != 'sports-backend' ]; then
+                             echo 'Found container from different project: '\$c'. Removing...'
+                             sudo docker stop \$c 2>/dev/null || true
+                             sudo docker rm \$c 2>/dev/null || true
+                         fi
+                     fi
+                 done
+
+                 echo '--- Docker Hub login (if credentials present) ---'
+                 if [ -n "\$DOCKERHUB_USER" ]; then
+                     echo 'Logging into Docker Hub...'
+                     echo "\$DOCKERHUB_PASS" | sudo env ${allEnvVars} docker login -u "\$DOCKERHUB_USER" --password-stdin || true
+                 fi
+
+                 echo '--- Pulling new images ---'
+                 sudo env ${allEnvVars} docker compose pull
+
+                 echo '--- Restarting services with Docker Compose V2 ---'
+                 sudo env ${allEnvVars} docker compose up -d --force-recreate
+
+                 echo '--- Cleanup and verification ---'
+                 sudo docker image prune -f
+                 sudo docker ps
+             "
+         """
+     }
 }
 
 pipeline {
@@ -74,7 +135,11 @@ pipeline {
         DOCKER_USERNAME            = 'edydockers'
         IMAGE_NAME                 = "local/horsetrust"
         DOCKERHUB_CREDENTIALS      = 'edydockers-credentials'
-    }
+        SSH_KEY_CRED               = 'vm-ssh-key-98'
+        VM_HOST_CRED               = 'vm-ip-98'
+        DB_USER_CRED               = 'horsetrust-db-name'
+        DB_PASS_CRED               = 'horsetrust-db-pass'
+     }
 
     stages {
         stage('Checkout Source Code') {
@@ -105,13 +170,11 @@ pipeline {
             when { branch 'main' }
             steps {
                 script {
-                    // This stage runs only on 'main' so use the production tags directly
                     def imageToPush = "edydockers/backend-horsetrust"
                     def imageTag = "prod-${env.BUILD_NUMBER}"
                     def latestTag = "latest"
 
                     withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CREDENTIALS, usernameVariable: 'DUSER', passwordVariable: 'DPASS')]) {
-                        // Using #!/bin/bash at the very top of the sh block fixes the 'Illegal option -o pipefail'
                         sh """#!/bin/bash
                             set -euo pipefail
 
@@ -144,16 +207,15 @@ pipeline {
                         dbUserCredentialId: 'horsetrust-db-name',
                         dbPasswordCredentialId: 'horsetrust-db-pass',
                         springProfile: 'prod',
-                        frontendBaseUrl: 'https://horsetrust.codershub.top',
+                        frontendBaseUrl: 'https://horsetrust.codershub.top'
                     )
-                }
-            }
-        }
+                 }
+             }
+         }
     }
 
     post {
         always {
-            // Only remove the built image when running on 'main'. Always clean workspace.
             script {
                 if (env.BRANCH_NAME == 'main') {
                     sh "docker rmi ${IMAGE_NAME} || true"
@@ -162,18 +224,18 @@ pipeline {
             cleanWs()
         }
         success {
-            script {
-                if (env.BRANCH_NAME == 'main') {
-                    slackSend (channel: SLACK_CHANNEL, color: 'good', message: "✅ SUCCESS: '${JOB_NAME}' on branch '${BRANCH_NAME}' finished successfully.")
-                }
-            }
+//             script {
+//                 if (env.BRANCH_NAME == 'main') {
+//                     slackSend (channel: SLACK_CHANNEL, color: 'good', message: "✅ SUCCESS: '${JOB_NAME}' on branch '${BRANCH_NAME}' finished successfully.")
+//                 }
+//             }
         }
         failure {
-            script {
-                if (env.BRANCH_NAME == 'main') {
-                    slackSend (channel: SLACK_CHANNEL, color: 'danger', message: "❌ FAILURE: '${JOB_NAME}' on branch '${BRANCH_NAME}' failed.")
-                }
-            }
+//             script {
+//                 if (env.BRANCH_NAME == 'main') {
+//                     slackSend (channel: SLACK_CHANNEL, color: 'danger', message: "❌ FAILURE: '${JOB_NAME}' on branch '${BRANCH_NAME}' failed.")
+//                 }
+//             }
         }
     }
 }

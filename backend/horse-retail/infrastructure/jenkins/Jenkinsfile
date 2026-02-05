@@ -1,0 +1,179 @@
+def deployApp(Map config) {
+    def composeFile = config.composeFile ?: 'docker-compose.yml'
+
+    withCredentials([
+        sshUserPrivateKey(credentialsId: config.sshKeyCredentialId, keyFileVariable: 'SSH_KEY'),
+        string(credentialsId: config.dbUserCredentialId, variable: 'DB_USER'),
+        string(credentialsId: config.dbPasswordCredentialId, variable: 'DB_PASSWORD'),
+        string(credentialsId: config.vmHostCredentialId, variable: 'VM_HOST'),
+
+    ]) {
+        def deployImage = (env.BRANCH_NAME == 'main') ? "edydockers/backend-horsetrust" : "edydockers/backend-horsetrust"
+        def imageTag = config.imageTag
+        def fullBackendImage = "${deployImage}:${imageTag}"
+
+        def allEnvVars = """
+            BACKEND_IMAGE='${fullBackendImage}'
+            DB_USER='${DB_USER}'
+            DB_PASSWORD='${DB_PASSWORD}'
+            COMPOSE_PROJECT_NAME='horsetrust-backend'
+        """.stripIndent().trim().replaceAll('\n', ' ')
+
+        echo "🚀 Deploying image: ${fullBackendImage} to ${VM_HOST}"
+
+        sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no infrastructure/docker/${composeFile} ${VM_USER}@${VM_HOST}:${VM_PROJECT_PATH}/docker-compose.yml"
+
+        sh """
+            ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} "
+                set -e
+                cd ${VM_PROJECT_PATH}
+
+                echo '--- Ensuring horse-net exists ---'
+                sudo docker network create horse-net 2>/dev/null || true
+
+                echo '--- Checking for legacy containers to remove ---'
+                for c in sports-management-backend postgres-db-prod redis-cache; do
+                    if sudo docker ps -a --format '{{.Names}}' | grep -q '^'\\\$c'\$'; then
+                        # FIXED: Removed extra dot and incorrect dollar sign placement
+                        PROJ=\\\$(sudo docker inspect --format '{{index .Config.Labels \"com.docker.compose.project\"}}' \\\$c 2>/dev/null || echo '')
+                        if [ '\\\$PROJ' != 'sports-backend' ]; then
+                            echo 'Found container from different project: '\\\$c'. Removing...'
+                            sudo docker stop \\\$c 2>/dev/null || true
+                            sudo docker rm \\\$c 2>/dev/null || true
+                        fi
+                    fi
+                done
+
+                echo '--- Pulling new images ---'
+                sudo env ${allEnvVars} docker compose pull
+
+                echo '--- Restarting services with Docker Compose V2 ---'
+                sudo env ${allEnvVars} docker compose up -d --force-recreate
+
+                echo '--- Cleanup and verification ---'
+                sudo docker image prune -f
+                sudo docker ps
+            "
+        """
+    }
+}
+
+pipeline {
+    agent { label "worker-node-02" }
+
+    tools {
+        jdk 'jdk21'
+        maven 'maven3'
+    }
+
+    triggers { githubPush() }
+
+    environment {
+        VM_USER                    = 'jenkins'
+        VM_PROJECT_PATH            = '/home/jenkins/horsetrust'
+        DOCKER_USERNAME            = 'edydockers'
+        IMAGE_NAME                 = "local/horsetrust"
+        DOCKERHUB_CREDENTIALS      = 'edydockers-credentials'
+    }
+
+    stages {
+        stage('Checkout Source Code') {
+            when { branch 'main' }
+            steps {
+                cleanWs(deleteDirs: true)
+                checkout scm
+            }
+        }
+
+        stage('Build Application') {
+            when { branch 'main' }
+            steps {
+                sh "mvn clean install -DskipTests"
+            }
+        }
+
+        stage('Build Docker Image') {
+            when { branch 'main' }
+            steps {
+                script {
+                    sh "docker build -t ${IMAGE_NAME} -f infrastructure/docker/Dockerfile ."
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            when { branch 'main' }
+            steps {
+                script {
+                    // This stage runs only on 'main' so use the production tags directly
+                    def imageToPush = "edydockers/backend-horsetrust"
+                    def imageTag = "prod-${env.BUILD_NUMBER}"
+                    def latestTag = "latest"
+
+                    withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CREDENTIALS, usernameVariable: 'DUSER', passwordVariable: 'DPASS')]) {
+                        // Using #!/bin/bash at the very top of the sh block fixes the 'Illegal option -o pipefail'
+                        sh """#!/bin/bash
+                            set -euo pipefail
+
+                            echo "Logging in to Docker Hub..."
+                            echo '${DPASS}' | docker login -u '${DUSER}' --password-stdin
+
+                            echo "Pushing Build Tag: ${imageToPush}:${imageTag}"
+                            docker tag ${IMAGE_NAME} ${imageToPush}:${imageTag}
+                            docker push ${imageToPush}:${imageTag}
+
+                            echo "Pushing Latest Tag: ${imageToPush}:${latestTag}"
+                            docker tag ${IMAGE_NAME} ${imageToPush}:${latestTag}
+                            docker push ${imageToPush}:${latestTag}
+
+                            docker logout
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Production') {
+            when { branch 'main' }
+            steps {
+                script {
+                    deployApp(
+                        vmHostCredentialId: 'vm-ip-98',
+                        imageTag: "prod-${env.BUILD_NUMBER}",
+                        sshKeyCredentialId: 'vm-ssh-key-98',
+                        dbUserCredentialId: 'horsetrust-db-name',
+                        dbPasswordCredentialId: 'horsetrust-db-pass',
+                        springProfile: 'prod',
+                        frontendBaseUrl: 'https://horsetrust.codershub.top',
+                    )
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // Only remove the built image when running on 'main'. Always clean workspace.
+            script {
+                if (env.BRANCH_NAME == 'main') {
+                    sh "docker rmi ${IMAGE_NAME} || true"
+                }
+            }
+            cleanWs()
+        }
+        success {
+            script {
+                if (env.BRANCH_NAME == 'main') {
+                    slackSend (channel: SLACK_CHANNEL, color: 'good', message: "✅ SUCCESS: '${JOB_NAME}' on branch '${BRANCH_NAME}' finished successfully.")
+                }
+            }
+        }
+        failure {
+            script {
+                if (env.BRANCH_NAME == 'main') {
+                    slackSend (channel: SLACK_CHANNEL, color: 'danger', message: "❌ FAILURE: '${JOB_NAME}' on branch '${BRANCH_NAME}' failed.")
+                }
+            }
+        }
+    }
+}
