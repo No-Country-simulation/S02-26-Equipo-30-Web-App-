@@ -1,0 +1,9 @@
+{
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "destination": "https://horsetrust.codershub.top/$1",
+      "permanent": false
+    }
+  ]
+}
