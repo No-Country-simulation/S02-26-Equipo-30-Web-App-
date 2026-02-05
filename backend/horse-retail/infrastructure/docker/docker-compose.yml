@@ -31,7 +31,7 @@ services:
       # Ensure Spring runs on the expected port inside the container (matches application.properties default)
       PORT: ${PORT:8090}
     ports:
-      - "8090:8090"
+      - "8070:8090"
     networks:
       - horse-net
 
