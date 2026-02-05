@@ -2,7 +2,6 @@ services:
   database:
     image: postgres:16
     environment:
-      # Support both the POSTGRES_DOCKER_* vars your pipeline may set and fallbacks
       POSTGRES_USER: ${POSTGRES_DOCKER_USER:-${POSTGRES_USER:-postgres}}
       POSTGRES_PASSWORD: ${POSTGRES_DOCKER_PASSWORD:-${POSTGRES_PASSWORD:-MyPassword123!}}
       POSTGRES_DB: ${POSTGRES_DOCKER_DB:-${POSTGRES_DB:-horse-trust}}
@@ -14,21 +13,16 @@ services:
       - db_data:/var/lib/postgresql/data
 
   spring:
-    build: ../../horse-retail
+    image: ${BACKEND_IMAGE}
     depends_on:
       - database
-    # Expose env vars directly so docker-compose can inject them and Jenkins can override via env
     environment:
-      # Make the container resolve DB host to the database service name
       POSTGRES_HOST: ${POSTGRES_HOST:-database}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      # Use the same DB name and credentials that the database service uses (can be overridden by Jenkins)
       POSTGRES_DB: ${POSTGRES_DOCKER_DB:-${POSTGRES_DB:-horse-trust}}
       POSTGRES_USER: ${POSTGRES_DOCKER_USER:-${POSTGRES_USER:-postgres}}
       POSTGRES_PASSWORD: ${POSTGRES_DOCKER_PASSWORD:-${POSTGRES_PASSWORD:-MyPassword123!}}
-      # Optionally provide the full JDBC URL for consumers that prefer it
       POSTGRES_DOCKER_URL: ${POSTGRES_DOCKER_URL:-jdbc:postgresql://${POSTGRES_HOST:-database}:${POSTGRES_PORT:-5432}/${POSTGRES_DOCKER_DB:-${POSTGRES_DB:-horse-trust}}}
-      # Ensure Spring runs on the expected port inside the container (matches application.properties default)
       PORT: ${PORT:-8090}
     ports:
       - "8070:8090"
