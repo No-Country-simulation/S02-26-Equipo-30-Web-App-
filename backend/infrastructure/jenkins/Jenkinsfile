@@ -223,19 +223,19 @@ pipeline {
             }
             cleanWs()
         }
-        success {
-//             script {
-//                 if (env.BRANCH_NAME == 'main') {
-//                     slackSend (channel: SLACK_CHANNEL, color: 'good', message: "✅ SUCCESS: '${JOB_NAME}' on branch '${BRANCH_NAME}' finished successfully.")
-//                 }
-//             }
-        }
-        failure {
-//             script {
-//                 if (env.BRANCH_NAME == 'main') {
-//                     slackSend (channel: SLACK_CHANNEL, color: 'danger', message: "❌ FAILURE: '${JOB_NAME}' on branch '${BRANCH_NAME}' failed.")
-//                 }
-//             }
-        }
+        // success {
+        //     script {
+        //         if (env.BRANCH_NAME == 'main') {
+        //             slackSend (channel: SLACK_CHANNEL, color: 'good', message: "✅ SUCCESS: '${JOB_NAME}' on branch '${BRANCH_NAME}' finished successfully.")
+        //         }
+        //     }
+        // }
+        // failure {
+        //     script {
+        //         if (env.BRANCH_NAME == 'main') {
+        //             slackSend (channel: SLACK_CHANNEL, color: 'danger', message: "❌ FAILURE: '${JOB_NAME}' on branch '${BRANCH_NAME}' failed.")
+        //         }
+        //     }
+        // }
     }
 }
