@@ -35,7 +35,6 @@ def deployApp(Map config) {
     }
 
     withCredentials(creds) {
-         // UPDATED: Image name
          def deployImage = "edydockers/backend-horsetrust"
          def imageTag = config.imageTag
          def fullBackendImage = "${deployImage}:${imageTag}"
@@ -64,9 +63,15 @@ def deployApp(Map config) {
 
          echo "🚀 Deploying image: ${fullBackendImage} to ${VM_HOST}"
 
-         // UPDATED PATH: Pointing to backend/horse-retail/infrastructure/docker/
+         // ------------------------------------------------------------------
+         // FIX 1: Create the directory on the server BEFORE copying the file
+         // ------------------------------------------------------------------
+         sh "ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} 'mkdir -p ${VM_PROJECT_PATH}'"
+
+         // Copy docker-compose file
          sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no backend/horse-retail/infrastructure/docker/${composeFile} ${VM_USER}@${VM_HOST}:${VM_PROJECT_PATH}/docker-compose.yml"
 
+         // Execute deployment on remote server
          sh """
              ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} "
                  set -e
@@ -99,8 +104,6 @@ pipeline {
         maven 'maven3'
     }
 
-    // No 'triggers' needed if configured in Jenkins UI, but keeping git push trigger is fine.
-
     environment {
         VM_USER                    = 'jenkins'
         VM_PROJECT_PATH            = '/home/jenkins/horsetrust'
@@ -118,7 +121,6 @@ pipeline {
 
     stages {
         stage('Checkout Source Code') {
-            // REMOVED: when { branch 'main' }
             steps {
                 cleanWs(deleteDirs: true)
                 checkout scm
@@ -126,26 +128,20 @@ pipeline {
         }
 
         stage('Build Application') {
-            // REMOVED: when { branch 'main' }
             steps {
-                // UPDATED PATH: Point to pom.xml inside the subdirectory
                 sh "mvn -f ${APP_DIR}/pom.xml clean install -DskipTests"
             }
         }
 
         stage('Build Docker Image') {
-            // REMOVED: when { branch 'main' }
             steps {
                 script {
-                    // UPDATED PATH: Build using the Dockerfile in subfolder, set context to app folder
-                    // We build from root, pointing to specific Dockerfile
                     sh "docker build -t ${IMAGE_NAME} -f ${DOCKER_DIR}/Dockerfile ${APP_DIR}"
                 }
             }
         }
 
         stage('Push Docker Image') {
-            // REMOVED: when { branch 'main' }
             steps {
                 script {
                     def imageToPush = "edydockers/backend-horsetrust"
@@ -171,7 +167,6 @@ pipeline {
         }
 
         stage('Deploy to Production') {
-            // REMOVED: when { branch 'main' }
             steps {
                 script {
                     deployApp(
