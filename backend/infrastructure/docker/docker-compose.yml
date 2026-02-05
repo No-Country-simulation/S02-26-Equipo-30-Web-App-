@@ -13,13 +13,13 @@ services:
       - db_data:/var/lib/postgresql/data
 
   spring:
-    build: ./
+    build: ../../horse-retail
     depends_on:
       - database
     env_file:
       - .env
     ports:
-      - "8080:8090"
+      - "8080:8070"
     networks:
       - horse-net
 
