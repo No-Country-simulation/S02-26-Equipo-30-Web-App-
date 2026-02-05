@@ -1,0 +1,46 @@
+# .dockerignore for Docker build context in backend/infrastructure/docker/
+# Purpose: keep the Docker build context small and avoid sending unnecessary files to the daemon.
+
+# NOTE: The Dockerfile copies files from ../../horse-retail/ (pom.xml and src/).
+# Do NOT ignore those files or directories here.
+
+# Git metadata and local ignore files
+.git
+.gitignore
+
+# Maven / Java build outputs and artifacts
+**/target/
+**/*.jar
+**/*.war
+
+# IDE/editor folders and project files
+.idea/
+.vscode/
+*.iml
+*.class
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node / frontend
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Environment files
+.env
+.env.local
+
+# Docker overrides and local compose files
+docker-compose.override.yml
+docker-compose.*.yml
+.dockerignore
+
+# Logs, temporary files
+*.log
+tmp/
+*.tmp
+
+# Maven wrapper binary (rarely needed in build context)
+.mvn/wrapper/maven-wrapper.jar
