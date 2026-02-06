@@ -1,96 +1,71 @@
 def deployApp(Map config) {
     def composeFile = config.composeFile ?: 'docker-compose.yml'
 
+    // Credentials lookup
     def sshCredId = config.sshKeyCredentialId ?: env.SSH_KEY_CRED
     def vmHostCredId = config.vmHostCredentialId ?: env.VM_HOST_CRED
     def dbUserCredId = config.dbUserCredentialId ?: env.DB_USER_CRED
     def dbPassCredId = config.dbPasswordCredentialId ?: env.DB_PASS_CRED
-    def dbCredId = config.dbCredentialId ?: null
     def dockerCredId = config.dockerCredentialId ?: env.DOCKERHUB_CREDENTIALS
 
-    // Validation
-    def missing = []
-    if (!sshCredId) { missing << 'sshKeyCredentialId'}
-    if (!vmHostCredId) { missing << 'vmHostCredentialId'}
-    if (!(dbCredId || (dbUserCredId && dbPassCredId))) { missing << 'dbCredentialId'}
-
-    if (missing) {
-        error("Missing required credentials: ${missing.join(', ')}")
+    // Basic Validation
+    if (!sshCredId || !vmHostCredId) {
+        error("Missing required credentials for SSH or Host.")
     }
 
     def creds = [
         sshUserPrivateKey(credentialsId: sshCredId, keyFileVariable: 'SSH_KEY'),
-        string(credentialsId: vmHostCredId, variable: 'VM_HOST')
+        string(credentialsId: vmHostCredId, variable: 'VM_HOST'),
+        string(credentialsId: dbUserCredId, variable: 'POSTGRES_USER'),
+        string(credentialsId: dbPassCredId, variable: 'POSTGRES_PASSWORD'),
+        usernamePassword(credentialsId: dockerCredId, usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')
     ]
-
-    if (dbCredId) {
-        creds << usernamePassword(credentialsId: dbCredId, usernameVariable: 'POSTGRES_USER', passwordVariable: 'POSTGRES_PASSWORD')
-    } else {
-        if (dbUserCredId) { creds << string(credentialsId: dbUserCredId, variable: 'POSTGRES_USER') }
-        if (dbPassCredId) { creds << string(credentialsId: dbPassCredId, variable: 'POSTGRES_PASSWORD') }
-    }
-
-    if (dockerCredId) {
-        creds << usernamePassword(credentialsId: dockerCredId, usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')
-    }
 
     withCredentials(creds) {
          def deployImage = "edydockers/backend-horsetrust"
          def imageTag = config.imageTag
+         // This variable matches the 'image: ${BACKEND_IMAGE}' in docker-compose.yml
          def fullBackendImage = "${deployImage}:${imageTag}"
 
-         def pgHost = (env.POSTGRES_HOST ?: config.postgresHost) ?: 'database'
-         def pgPort = (env.POSTGRES_PORT ?: config.postgresPort) ?: '5432'
-         def pgDb   = (env.POSTGRES_DB   ?: config.postgresDb)   ?: 'horse-trust'
-         def pgUser = (env.POSTGRES_USER ?: config.postgresUser) ?: ''
-         def pgPass = (env.POSTGRES_PASSWORD ?: config.postgresPassword) ?: ''
+         // Environment variables for the Docker container
+         def pgHost = 'database'
+         def pgPort = '5432'
+         def pgDb   = 'horse-trust'
 
-         def allEnvVars = """
-            BACKEND_IMAGE='${fullBackendImage}'
-            COMPOSE_PROJECT_NAME='horsetrust-backend'
-            POSTGRES_HOST='${pgHost}'
-            POSTGRES_PORT='${pgPort}'
-            POSTGRES_DB='${pgDb}'
-            POSTGRES_USER='${pgUser}'
-            POSTGRES_PASSWORD='${pgPass}'
-         """
+         // We construct the command string cleanly
+         def envVars = "BACKEND_IMAGE='${fullBackendImage}' COMPOSE_PROJECT_NAME='horsetrust-backend' POSTGRES_HOST='${pgHost}' POSTGRES_PORT='${pgPort}' POSTGRES_DB='${pgDb}' POSTGRES_USER='${POSTGRES_USER}' POSTGRES_PASSWORD='${POSTGRES_PASSWORD}'"
 
-         if (dockerCredId) {
-            allEnvVars += " DOCKERHUB_USER='${DOCKERHUB_USER}' DOCKERHUB_PASS='${DOCKERHUB_PASS}'"
-         }
-
-         allEnvVars = allEnvVars.stripIndent().trim().replaceAll('\n', ' ')
+         // Add Docker Hub creds to env for the login command
+         def loginVars = "DOCKERHUB_USER='${DOCKERHUB_USER}' DOCKERHUB_PASS='${DOCKERHUB_PASS}'"
 
          echo "🚀 Deploying image: ${fullBackendImage} to ${VM_HOST}"
 
-         // ------------------------------------------------------------------
-         // FIX 1: Create the directory on the server BEFORE copying the file
-         // ------------------------------------------------------------------
+         // 1. Create directory
          sh "ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} 'mkdir -p ${VM_PROJECT_PATH}'"
 
-         // Copy docker-compose file
+         // 2. Copy docker-compose file
          sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no backend/horse-retail/infrastructure/docker/${composeFile} ${VM_USER}@${VM_HOST}:${VM_PROJECT_PATH}/docker-compose.yml"
 
-         // Execute deployment on remote server
+         // 3. Execute deployment
          sh """
              ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} "
                  set -e
                  cd ${VM_PROJECT_PATH}
 
-                 # Ensure network exists
+                 # Create network if missing
                  sudo docker network create horse-net 2>/dev/null || true
 
-                 # Login to DockerHub
-                 if [ -n "\$DOCKERHUB_USER" ]; then
-                     echo "\$DOCKERHUB_PASS" | sudo env ${allEnvVars} docker login -u "\$DOCKERHUB_USER" --password-stdin || true
-                 fi
+                 # Login to DockerHub (using variables passed from Jenkins)
+                 echo '${DOCKERHUB_PASS}' | sudo docker login -u '${DOCKERHUB_USER}' --password-stdin
 
                  # Pull and Restart
-                 sudo env ${allEnvVars} docker compose pull
-                 sudo env ${allEnvVars} docker compose up -d --force-recreate
+                 # We pass the env vars specifically to the docker compose command
+                 sudo env ${envVars} docker compose pull
+                 sudo env ${envVars} docker compose up -d --force-recreate
 
                  # Cleanup
                  sudo docker image prune -f
+                 sudo docker logout
              "
          """
      }
@@ -107,14 +82,10 @@ pipeline {
     environment {
         VM_USER                    = 'jenkins'
         VM_PROJECT_PATH            = '/home/jenkins/horsetrust'
-        DOCKER_USERNAME            = 'edydockers'
         IMAGE_NAME                 = "local/horsetrust"
         DOCKERHUB_CREDENTIALS      = 'edydockers-credentials'
-        SSH_KEY_CRED               = 'vm-ssh-key-98'
-        VM_HOST_CRED               = 'vm-ip-98'
-        DB_USER_CRED               = 'horsetrust-db-name'
-        DB_PASS_CRED               = 'horsetrust-db-pass'
-        // Define paths for clarity
+
+        // Define paths
         APP_DIR                    = 'backend/horse-retail'
         DOCKER_DIR                 = 'backend/horse-retail/infrastructure/docker'
     }
@@ -174,9 +145,7 @@ pipeline {
                         imageTag: "prod-${env.BUILD_NUMBER}",
                         sshKeyCredentialId: 'vm-ssh-key-98',
                         dbUserCredentialId: 'horsetrust-db-name',
-                        dbPasswordCredentialId: 'horsetrust-db-pass',
-                        springProfile: 'prod',
-                        frontendBaseUrl: 'https://horsetrust.codershub.top'
+                        dbPasswordCredentialId: 'horsetrust-db-pass'
                     )
                  }
              }
