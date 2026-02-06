@@ -3,11 +3,11 @@ services:
     image: postgres:16
     container_name: horse-retail-postgres
     environment:
-      POSTGRES_DB: horse_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5566:5577"
+      - "5467:5432"
     volumes:
       - pg_dev_data:/var/lib/postgresql/data
     networks:
