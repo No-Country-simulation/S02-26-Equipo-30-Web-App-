@@ -13,6 +13,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Table(name = "tbl_market_price_snapshots")
 public class MarketPriceSnapshot {
 
     @Id

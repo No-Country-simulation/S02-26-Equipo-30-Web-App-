@@ -9,7 +9,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "purchase_intents")
+@Table(name = "tbl_purchase_intents")
 @Getter
 @Setter
 @NoArgsConstructor

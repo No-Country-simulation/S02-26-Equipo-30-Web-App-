@@ -10,6 +10,7 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Table(name = "tbl_veterinarians")
 public class Veterinarian {
 
     @Id

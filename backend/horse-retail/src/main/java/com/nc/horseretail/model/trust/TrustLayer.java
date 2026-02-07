@@ -9,7 +9,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "trust_layers")
+@Table(name = "tbl_trust_layers")
 @Getter
 @Setter
 @NoArgsConstructor

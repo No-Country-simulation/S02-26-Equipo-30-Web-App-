@@ -9,6 +9,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Table(name = "tbl_certificate_records")
 public class CertificateRecord {
 
     @EmbeddedId
