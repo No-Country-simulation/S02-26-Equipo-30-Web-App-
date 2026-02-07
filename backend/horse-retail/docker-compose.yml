@@ -1,0 +1,32 @@
+services:
+  database:
+    image: postgres:16
+    container_name: horse-retail-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5467:5432"
+    volumes:
+      - pg_dev_data:/var/lib/postgresql/data
+    networks:
+      - horse-net
+
+  spring:
+    build: ./
+    depends_on:
+      - database
+    env_file:
+      - .env
+    ports:
+      - "8090:8090"
+    networks:
+      - horse-net
+
+volumes:
+  pg_dev_data:
+
+networks:
+  horse-net:
+    driver: bridge
