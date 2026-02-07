@@ -12,6 +12,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Table(name = "tbl_listing_verification_status")
 public class ListingVerificationStatus {
 
     @Id

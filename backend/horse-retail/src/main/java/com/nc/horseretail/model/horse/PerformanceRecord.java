@@ -8,12 +8,12 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
-@Table(name = "performance_records")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Table(name = "tbl_performance_records")
 public class PerformanceRecord {
 
     @Id

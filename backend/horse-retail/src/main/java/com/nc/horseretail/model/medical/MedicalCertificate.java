@@ -14,6 +14,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Table(name = "tbl_medical_certificates")
 public class MedicalCertificate {
 
     @Id

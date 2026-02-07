@@ -6,12 +6,12 @@ import lombok.*;
 import java.util.UUID;
 
 @Entity
-@Table(name = "horse_career_stats")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Table(name = "tbl_horse_career_stats")
 public class HorseCareerStats {
 
     @Id

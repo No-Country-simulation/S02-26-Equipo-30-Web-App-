@@ -4,12 +4,10 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.UUID;
 
 @Entity
-@Table(name = "app_user")
+@Table(name = "tbl_users")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -21,26 +19,61 @@ public class User {
     @GeneratedValue
     private UUID id;
 
-    @Column(nullable = false)
-    private String name;
+    // =========================
+    // Public identity
+    // =========================
 
-    @Column(nullable = false, unique = true)
+    @Column(name = "username", nullable = false, unique = true)
+    private String username;
+
+    // =========================
+    // Private identity
+    // =========================
+
+    @Column(name = "full_name", nullable = false)
+    private String fullName;
+
+    @Column(name = "email", nullable = false, unique = true)
     private String email;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(
-            name = "user_roles",
-            joinColumns = @JoinColumn(name = "user_id")
-    )
-    @Enumerated(EnumType.STRING)
-    @Column(name = "role")
-    private Set<AppRole> roles = new HashSet<>();
+    @Column(name = "password_hash", nullable = false)
+    private String passwordHash;
 
-    @Column(nullable = false)
+    // =========================
+    // App role
+    // =========================
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "app_role", nullable = false)
+    private AppRole role;
+
+    // =========================
+    // Status
+    // =========================
+
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified;
+
+    @Column(name = "account_enabled", nullable = false)
+    private boolean accountEnabled;
+
+    // =========================
+    // Auditing
+    // =========================
+
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    @Column(name = "last_login_at")
+    private Instant lastLoginAt;
 
     @PrePersist
     void onCreate() {
         this.createdAt = Instant.now();
+        this.accountEnabled = true;
+        this.emailVerified = false;
+        if (this.role == null) {
+            this.role = AppRole.USER;
+        }
     }
 }

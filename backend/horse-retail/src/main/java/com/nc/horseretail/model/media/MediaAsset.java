@@ -9,7 +9,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
-@Table(name = "media_assets")
+@Table(name = "tbl_media_assets")
 @Getter
 @Setter
 @NoArgsConstructor
