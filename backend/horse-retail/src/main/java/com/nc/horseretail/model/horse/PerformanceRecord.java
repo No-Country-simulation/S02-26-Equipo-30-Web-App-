@@ -1,6 +1,5 @@
-package com.nc.horseretail.model.vet;
+package com.nc.horseretail.model.horse;
 
-import com.nc.horseretail.model.horse.Horse;
 import com.nc.horseretail.model.user.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -9,13 +8,13 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
-@Table(name = "veterinary_records")
+@Table(name = "performance_records")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class VeterinaryRecord {
+public class PerformanceRecord {
 
     @Id
     @GeneratedValue
@@ -25,11 +24,11 @@ public class VeterinaryRecord {
     private Horse horse;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    private User vet;
+    private User validator;
 
-    private String examType;
-    private LocalDate examDate;
+    private String discipline;
+    private String level;
+    private LocalDate eventDate;
 
-    private boolean majorIssue;
     private boolean verified;
 }

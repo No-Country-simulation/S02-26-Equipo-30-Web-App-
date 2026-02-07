@@ -1,4 +1,4 @@
-package com.nc.horseretail.model.vet;
+package com.nc.horseretail.model.enums;
 
 public enum VerificationStatus {
     PENDING,
