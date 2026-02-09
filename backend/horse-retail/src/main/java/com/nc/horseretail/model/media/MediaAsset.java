@@ -24,7 +24,7 @@ public class MediaAsset {
     @ManyToOne(fetch = FetchType.LAZY)
     private Horse horse;
 
-    private String mediaType;
+    private MediaType mediaType;
     private LocalDate captureDate;
     private String context;
     private boolean unedited;
