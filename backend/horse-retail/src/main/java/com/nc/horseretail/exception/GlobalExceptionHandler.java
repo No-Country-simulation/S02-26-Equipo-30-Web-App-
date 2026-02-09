@@ -75,6 +75,13 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_GATEWAY, "External Service Error", ex, request);
     }
 
+    @ExceptionHandler(EmailAlreadyExistException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ApiError handleEmailAlreadyExist(EmailAlreadyExistException ex, HttpServletRequest request) {
+        log.warn("Email already exists: {}", ex.getMessage());
+        return build(HttpStatus.CONFLICT, "Conflict", ex, request);
+    }
+
     // ======================
     // Helper
     // ======================
