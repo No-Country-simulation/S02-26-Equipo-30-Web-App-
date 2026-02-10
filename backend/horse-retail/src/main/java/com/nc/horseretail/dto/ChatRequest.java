@@ -7,7 +7,7 @@ import java.util.UUID;
 @Getter 
 @Setter
 public class ChatRequest {
-    private UUID listingId; // El anuncio del caballo
-    private UUID senderId;  // El que envía
-    private String text;    // El contenido
+    private UUID listingId; 
+    private UUID senderId;  
+    private String text;    
 }
