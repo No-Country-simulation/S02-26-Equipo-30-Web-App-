@@ -8,5 +8,5 @@ import java.util.UUID;
 
 @Repository
 public interface ListingRepository extends JpaRepository<Listing, UUID> {
-    // Hereda todos los métodos básicos: save, findById, etc.
+    
 }
