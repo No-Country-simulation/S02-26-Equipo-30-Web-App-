@@ -29,16 +29,16 @@ public class ChatServiceImpl implements ChatService {
 
     @Transactional
     public ChatResponse sendMessage(ChatRequest request) {
-        // 1. Buscar o Crear la conversación
+        // Buscar o Crear la conversación
         Conversation conversation = conversationRepository
             .findByListingIdAndStartedById(request.getListingId(), request.getSenderId())
             .orElseGet(() -> createNewConversation(request.getListingId(), request.getSenderId()));
 
-        // 2. Buscar al usuario que envía
+        // Buscar al usuario que envía
         User sender = userRepository.findById(request.getSenderId())
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        // 3. Crear el mensaje
+        // Crear el mensaje
         Message message = Message.builder()
             .conversation(conversation)
             .sender(sender)
