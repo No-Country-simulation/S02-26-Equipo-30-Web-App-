@@ -20,6 +20,8 @@ public class Horse {
     @GeneratedValue
     private UUID id;
 
+    private String name;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
@@ -32,12 +34,13 @@ public class Horse {
     private Double weightKg;
     private Double lengthM;
 
+    @Enumerated(EnumType.STRING)
     private Temperament temperament;
+    @Enumerated(EnumType.STRING)
     private MainUse mainUse;
     private String lineage;
 
     private String birthCountry;
-    private String currentCountry;
 
     @Embedded
     private Location location;

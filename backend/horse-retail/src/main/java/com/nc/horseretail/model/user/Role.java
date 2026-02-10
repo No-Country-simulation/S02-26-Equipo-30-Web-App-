@@ -1,6 +1,6 @@
 package com.nc.horseretail.model.user;
 
-public enum AppRole {
+public enum Role {
     USER,
     ADMIN
 }
