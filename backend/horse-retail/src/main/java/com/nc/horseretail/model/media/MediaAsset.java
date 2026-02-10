@@ -24,6 +24,8 @@ public class MediaAsset {
     @ManyToOne(fetch = FetchType.LAZY)
     private Horse horse;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private MediaType mediaType;
     private LocalDate captureDate;
     private String context;
