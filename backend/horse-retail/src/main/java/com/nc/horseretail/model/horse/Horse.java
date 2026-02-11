@@ -22,6 +22,9 @@ public class Horse {
 
     private String name;
 
+    @Column(name = "external_id", unique = true)
+    private String externalId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
@@ -44,4 +47,5 @@ public class Horse {
 
     @Embedded
     private Location location;
+
 }
