@@ -31,6 +31,9 @@ public class Listing {
 
     private Instant createdAt;
 
+    @Column(name = "external_id", unique = true)
+    private String externalId;
+
     @PrePersist
     void onCreate() {
         this.createdAt = Instant.now();
