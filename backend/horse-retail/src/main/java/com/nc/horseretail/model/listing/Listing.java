@@ -1,6 +1,7 @@
 package com.nc.horseretail.model.listing;
 
 import com.nc.horseretail.model.horse.Horse;
+import com.nc.horseretail.model.user.User;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -21,6 +22,10 @@ public class Listing {
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id", nullable = false) // Relación con el dueño
+    private User owner;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "horse_id", nullable = false)
     private Horse horse;
 
@@ -37,5 +42,6 @@ public class Listing {
     @PrePersist
     void onCreate() {
         this.createdAt = Instant.now();
+        if (this.status == null) this.status = ListingStatus.ACTIVE;
     }
 }
