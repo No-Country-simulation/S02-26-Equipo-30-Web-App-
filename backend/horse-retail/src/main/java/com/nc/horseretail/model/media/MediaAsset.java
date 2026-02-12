@@ -28,6 +28,8 @@ public class MediaAsset {
     private LocalDate captureDate;
     private String context;
     private boolean unedited;
+    private String url;
+
 
     @ManyToOne(fetch = FetchType.LAZY)
     private User uploadedBy;
