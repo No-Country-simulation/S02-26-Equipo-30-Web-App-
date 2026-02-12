@@ -20,6 +20,9 @@ public class User implements Serializable {
     @GeneratedValue
     private UUID id;
 
+    @Column(name = "external_id", unique = true)
+    private String externalId;
+
     // =========================
     // Public identity
     // =========================
