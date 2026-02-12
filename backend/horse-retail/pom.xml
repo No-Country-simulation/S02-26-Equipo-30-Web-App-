@@ -73,6 +73,11 @@
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-crypto</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
         <!-- Spring Boot Starter Test (includes JUnit, Mockito, etc.) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
