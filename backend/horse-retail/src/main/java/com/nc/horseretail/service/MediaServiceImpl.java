@@ -24,7 +24,7 @@ public class MediaServiceImpl implements MediaService {
     @Override
     public MediaResponse uploadMedia(MediaUploadRequest request) {
         
-        Horse horse = horseREpository.findById(request.getHorseId())
+        Horse horse = horseRepository.findById(request.getHorseId())
                 .orElseThrow(() -> new RuntimeException("Horse not found"));
         
         MediaAsset media = MediaAsset.builder()
