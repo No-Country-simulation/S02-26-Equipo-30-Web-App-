@@ -82,6 +82,13 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.CONFLICT, "Conflict", ex, request);
     }
 
+    @ExceptionHandler(InvalidCredentialException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ApiError handleInvalidCredential(InvalidCredentialException ex, HttpServletRequest request) {
+        log.warn("Invalid credential: {}", ex.getMessage());
+        return build(HttpStatus.UNAUTHORIZED, "Invalid Credential", ex, request);
+    }
+
     // ======================
     // Helper
     // ======================
