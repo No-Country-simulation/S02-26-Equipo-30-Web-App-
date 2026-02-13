@@ -3,7 +3,7 @@ package com.nc.horseretail.service;
 import com.nc.horseretail.dto.AuthResponse;
 import com.nc.horseretail.dto.RegisterRequest;
 import com.nc.horseretail.exception.EmailAlreadyExistException;
-import com.nc.horseretail.model.user.AppRole;
+import com.nc.horseretail.model.user.Role;
 import com.nc.horseretail.model.user.User;
 import com.nc.horseretail.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -32,14 +32,8 @@ public class AuthServiceImpl implements AuthService {
                 .username(generateUniqueUsername(request.getFullName()))
                 .fullName(request.getFullName()).email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .role(AppRole.USER)
+                .role(Role.USER)
                 .build();
-
-        User user2 = new User();
-
-        user2.setId(user.getId());
-        user2.setEmail(request.getEmail()
-        );
 
         userRepository.save(user);
         //TODO generate token and return it in response

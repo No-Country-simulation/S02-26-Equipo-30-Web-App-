@@ -20,6 +20,9 @@ public class User implements Serializable {
     @GeneratedValue
     private UUID id;
 
+    @Column(name = "external_id", unique = true)
+    private String externalId;
+
     // =========================
     // Public identity
     // =========================
@@ -46,7 +49,7 @@ public class User implements Serializable {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "app_role", nullable = false)
-    private AppRole role;
+    private Role role;
 
     // =========================
     // Status
@@ -74,7 +77,7 @@ public class User implements Serializable {
         this.accountEnabled = true;
         this.emailVerified = false;
         if (this.role == null) {
-            this.role = AppRole.USER;
+            this.role = Role.USER;
         }
     }
 }
