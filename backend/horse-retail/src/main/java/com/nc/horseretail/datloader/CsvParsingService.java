@@ -63,13 +63,39 @@ public class CsvParsingService {
                 row.setSellerId(csvRecord.get("seller_id"));
                 row.setListingStatus(csvRecord.get("l_listing_status"));
                 row.setAskingPriceUsd(parseDouble(csvRecord.get("l_asking_price_usd")));
-
+                row.setPriceVsMarketRatio(parseDouble(csvRecord.get("l_price_vs_market_ratio")));
+                row.setAnomalyScore(parseDouble(csvRecord.get("l_anomaly_score")));
                 row.setVerifiedListing(Boolean.parseBoolean(csvRecord.get("l_verified_listing")));
                 row.setListingCreatedAt(
                         LocalDateTime.parse(
                                 csvRecord.get("l_created_at").replace(" ", "T")
                         )
+
                 );
+                row.setSellerFirstName(csvRecord.get("s_first_name"));
+                row.setSellerLastName(csvRecord.get("s_last_name"));
+                row.setSellerVerified(Boolean.parseBoolean(csvRecord.get("s_verified")));
+                row.setSellerDisputes(parseInt(csvRecord.get("s_disputes")));
+                row.setSellerSuccessRate(parseDouble(csvRecord.get("s_success_rate")));
+                row.setSellerNumListings(parseInt(csvRecord.get("s_num_listings")));
+                row.setSellerFlaggedFraud(
+                        Boolean.parseBoolean(csvRecord.get("s_flagged_fraud"))
+                );
+                row.setSellerCreatedAt(
+                        LocalDateTime.parse(
+                                csvRecord.get("s_created_at").replace(" ", "T")
+                        )
+                );
+                row.setSellerLastActiveAt(
+                        LocalDateTime.parse(
+                                csvRecord.get("s_last_active_at").replace(" ", "T")
+                        )
+                );
+
+                row.setVetTotalExams(csvRecord.get("vet_total_exams")
+                        .isBlank() ? null : parseInt(csvRecord.get("vet_total_exams")));
+                row.setVetMajorIssues(parseInt(csvRecord.get("vet_Major_issues")));
+                row.setVetAvgConfidence(parseDouble(csvRecord.get("vet_avg_confidence")));
 
                 rows.add(row);
             }

@@ -25,7 +25,6 @@ public class HorseCsvRow {
     private Double heightM;
     private Double weightKg;
     private Double lengthM;
-
     private Double maxSpeedKmh;
 
     private String temperament;         // h_temperament

@@ -27,7 +27,9 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth.requestMatchers(
                         "/api/v1/auth/**", "/v3/api-docs/**",
-                        "/swagger-ui/**", "/swagger-ui.html")
+                        "/swagger-ui/**", "/swagger-ui.html",
+                        "/api/v1/public")
+
                         .permitAll()
                         .requestMatchers("/internal/ml/**").hasRole("ML_SERVICE")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
