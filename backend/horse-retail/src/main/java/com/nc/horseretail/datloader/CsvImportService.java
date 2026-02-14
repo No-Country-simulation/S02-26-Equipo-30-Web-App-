@@ -58,7 +58,7 @@ public class CsvImportService {
                 horseRepository.save(horse);
 
                 // Create Listing
-                Listing listing = listingCsvMapper.toEntity(row, horse);
+                Listing listing = listingCsvMapper.toEntity(row, horse, user);
                 listingRepository.save(listing);
 
                 // Verification

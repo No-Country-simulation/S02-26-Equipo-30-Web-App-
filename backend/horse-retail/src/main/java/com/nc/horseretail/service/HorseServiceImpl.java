@@ -6,7 +6,6 @@ import com.nc.horseretail.mapper.HorseMapper;
 import com.nc.horseretail.model.horse.Horse;
 import com.nc.horseretail.model.user.User;
 import com.nc.horseretail.repository.HorseRepository;
-import com.nc.horseretail.security.currentuser.CurrentUserProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,16 +18,12 @@ import java.util.List;
 public class HorseServiceImpl implements HorseService {
 
     private final HorseRepository horseRepository;
-    private final CurrentUserProvider currentUserProvider;
     private final HorseMapper horseMapper;
 
     @Override
-    public void createHorse(HorseRequest request) {
+    public void createHorse(HorseRequest request, User owner) {
 
-        log.info("Creating new horse");
-
-        //TODO: replace with user from auth
-        User owner = currentUserProvider.getCurrentUser();
+        log.info("Creating new horse for user {}", owner.getUsername());
 
         Horse horse = horseMapper.toEntity(request);
         horse.setOwner(owner);

@@ -1,5 +1,6 @@
 package com.nc.horseretail.controller;
 
+import com.nc.horseretail.config.SecurityUser;
 import com.nc.horseretail.dto.HorseRequest;
 import com.nc.horseretail.dto.HorseResponse;
 import com.nc.horseretail.service.HorseService;
@@ -9,7 +10,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,10 +31,11 @@ public class HorseController {
     @ApiResponse(responseCode = "400", description = "Invalid request data")
     @ApiResponse(responseCode = "500", description = "Internal server error")
     @PostMapping
-    public ResponseEntity<Void> createHorse(@Valid @RequestBody HorseRequest request) {
+    public ResponseEntity<Void> createHorse(@Valid @RequestBody HorseRequest request,
+                                            @AuthenticationPrincipal SecurityUser securityUser) {
         log.info("Received request to create horse");
-        horseService.createHorse(request);
-        return ResponseEntity.ok().build();
+        horseService.createHorse(request, securityUser.getDomainUser());
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @Operation(summary = "Get all horses", description = "Retrieves a list of all horses")
@@ -45,7 +49,5 @@ public class HorseController {
     }
 
     //TODO get by id, count, update endpoints
-
-
 
 }
