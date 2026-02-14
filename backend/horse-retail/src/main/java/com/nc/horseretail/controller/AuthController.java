@@ -1,6 +1,8 @@
 package com.nc.horseretail.controller;
 
+import com.nc.horseretail.dto.AuthRequest;
 import com.nc.horseretail.dto.AuthResponse;
+import com.nc.horseretail.dto.RefreshTokenRequest;
 import com.nc.horseretail.dto.RegisterRequest;
 import com.nc.horseretail.service.AuthService;
 import lombok.RequiredArgsConstructor;
@@ -20,9 +22,20 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request){
-        return ResponseEntity.ok().body(authService.register(request));
+    public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
+        log.info("Register request received");
+        return ResponseEntity.ok(authService.register(request));
     }
 
-    //TODO add authenticate and refresh token endpoints
+    @PostMapping("/authenticate")
+    public ResponseEntity<AuthResponse> authenticate(@RequestBody AuthRequest request) {
+        log.info("Authenticate request received");
+        return ResponseEntity.ok(authService.authenticate(request));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(@RequestBody RefreshTokenRequest request) {
+        log.info("🔁 Refresh request received");
+        return ResponseEntity.ok(authService.refreshToken(request.getRefreshToken()));
+    }
 }

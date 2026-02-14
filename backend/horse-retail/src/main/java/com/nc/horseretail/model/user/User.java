@@ -20,16 +20,11 @@ public class User implements Serializable {
     @GeneratedValue
     private UUID id;
 
-    // =========================
-    // Public identity
-    // =========================
+    @Column(name = "external_id", unique = true)
+    private String externalId;
 
     @Column(name = "username", nullable = false, unique = true)
     private String username;
-
-    // =========================
-    // Private identity
-    // =========================
 
     @Column(name = "full_name", nullable = false)
     private String fullName;
@@ -40,27 +35,15 @@ public class User implements Serializable {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
-    // =========================
-    // App role
-    // =========================
-
     @Enumerated(EnumType.STRING)
     @Column(name = "app_role", nullable = false)
-    private AppRole role;
-
-    // =========================
-    // Status
-    // =========================
+    private Role role;
 
     @Column(name = "email_verified", nullable = false)
     private boolean emailVerified;
 
     @Column(name = "account_enabled", nullable = false)
     private boolean accountEnabled;
-
-    // =========================
-    // Auditing
-    // =========================
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -74,7 +57,7 @@ public class User implements Serializable {
         this.accountEnabled = true;
         this.emailVerified = false;
         if (this.role == null) {
-            this.role = AppRole.USER;
+            this.role = Role.USER;
         }
     }
 }
