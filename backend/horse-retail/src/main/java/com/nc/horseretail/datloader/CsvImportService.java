@@ -72,6 +72,8 @@ public class CsvImportService {
                         listingCsvMapper.toRiskAssessment(listing, row);
 
                 riskRepository.save(riskAssessment);
+
+                //TODO  create vets
             }
 
         } catch (IOException e) {
