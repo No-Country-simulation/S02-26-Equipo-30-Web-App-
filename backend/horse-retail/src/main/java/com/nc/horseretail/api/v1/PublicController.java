@@ -13,6 +13,6 @@ public class PublicController {
 
     @GetMapping("/public")
     public ResponseEntity<Map<String, String>> publicEndpoint() {
-        return ResponseEntity.ok(Map.of("message", "Hello from Horse Retail API v1"));
+        return ResponseEntity.ok(Map.of("message", "Hola este es una prueba"));
     }
 }
