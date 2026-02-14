@@ -3,6 +3,7 @@ package com.nc.horseretail.datloader;
 import com.nc.horseretail.model.enums.RiskLevel;
 import com.nc.horseretail.model.horse.Horse;
 import com.nc.horseretail.model.listing.*;
+import com.nc.horseretail.model.user.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -14,10 +15,11 @@ import java.time.ZoneId;
 @RequiredArgsConstructor
 public class ListingCsvMapper {
 
-    public Listing toEntity(HorseCsvRow row, Horse horse) {
+    public Listing toEntity(HorseCsvRow row, Horse horse, User user) {
 
         return Listing.builder()
                 .externalId(row.getListingId())
+                .owner(user)
                 .horse(horse)
                 .askingPriceUsd(row.getAskingPriceUsd())
                 .status(mapStatus(row.getListingStatus()))
@@ -98,27 +100,27 @@ public class ListingCsvMapper {
 
     private RiskLevel calculateRiskLevel(HorseCsvRow row) {
 
-        // 🚨 FRAUDE
+        // FRAUD
         if (Boolean.TRUE.equals(row.getSellerFlaggedFraud())) {
             return RiskLevel.HIGH;
         }
 
-        // 🚨 Anomaly score alto
+        // High anomaly score
         if (row.getAnomalyScore() != null && row.getAnomalyScore() > 0.7) {
             return RiskLevel.HIGH;
         }
 
-        // ⚠️ Problemas veterinarios
+        // Vet problems
         if (row.getVetMajorIssues() != null && row.getVetMajorIssues() > 0) {
             return RiskLevel.MEDIUM;
         }
 
-        // ⚠️ Precio muy inflado
+        // Overpriced
         if (row.getPriceVsMarketRatio() != null && row.getPriceVsMarketRatio() > 1.5) {
             return RiskLevel.MEDIUM;
         }
 
-        // ⚠️ Baja tasa de éxito
+        // Low success rate
         if (row.getSellerSuccessRate() != null && row.getSellerSuccessRate() < 0.5) {
             return RiskLevel.MEDIUM;
         }
