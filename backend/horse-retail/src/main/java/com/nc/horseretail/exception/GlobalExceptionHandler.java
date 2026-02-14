@@ -30,18 +30,16 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(BusinessException.class)
-    @ResponseStatus(HttpStatus.UNPROCESSABLE_CONTENT)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
     public ApiError handleBusinessException(BusinessException ex, HttpServletRequest request) {
         log.warn("Business rule violation: {}", ex.getMessage());
-        return build(HttpStatus.UNPROCESSABLE_CONTENT, "Business Rule Violation", ex, request);
+        return build(HttpStatus.UNPROCESSABLE_ENTITY, "Business Rule Violation", ex, request);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiError handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
-        String message = ex.getBindingResult().getFieldErrors().stream()
-                .map(err -> err.getField() + " " + err.getDefaultMessage())
-                .collect(Collectors.joining(", "));
+        String message = ex.getBindingResult().getFieldErrors().stream().map(err -> err.getField() + " " + err.getDefaultMessage()).collect(Collectors.joining(", "));
 
         log.warn("Validation error: {}", message);
 
