@@ -48,6 +48,12 @@ public class HorseController {
         return ResponseEntity.ok(horses);
     }
 
+    @Operation(summary = "Count all horses", description = "Returns the total number of horses available")
+    @GetMapping("/count")
+    public ResponseEntity<Long> countHorses() {
+        log.info("Received request to count all horses");
+        return ResponseEntity.ok(horseService.countTotalHorses());
+    }
     //TODO get by id, count, update endpoints
 
 }
