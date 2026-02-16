@@ -1,13 +1,17 @@
-package com.nc.horseretail.dto.communication;
+package com.nc.horseretail.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
-import lombok.Setter;
+
 import java.util.UUID;
 
-@Getter 
-@Setter
+@Getter
 public class ChatRequest {
-    private UUID listingId; 
-    private UUID senderId;  
-    private String text;    
+    @NotNull
+    private UUID listingId;
+    @NotBlank
+    @Size(min = 1, max = 2000)
+    private String text;
 }
