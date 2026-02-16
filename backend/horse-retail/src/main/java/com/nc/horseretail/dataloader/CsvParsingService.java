@@ -1,4 +1,4 @@
-package com.nc.horseretail.datloader;
+package com.nc.horseretail.dataloader;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;

@@ -1,4 +1,4 @@
-package com.nc.horseretail.datloader;
+package com.nc.horseretail.dataloader;
 
 import com.nc.horseretail.model.user.Role;
 import com.nc.horseretail.model.user.User;

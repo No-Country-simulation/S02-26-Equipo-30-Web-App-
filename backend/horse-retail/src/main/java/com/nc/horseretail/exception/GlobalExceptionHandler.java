@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.nio.file.AccessDeniedException;
 import java.time.Instant;
 import java.util.stream.Collectors;
 
@@ -85,6 +86,12 @@ public class GlobalExceptionHandler {
     public ApiError handleInvalidCredential(InvalidCredentialException ex, HttpServletRequest request) {
         log.warn("Invalid credential: {}", ex.getMessage());
         return build(HttpStatus.UNAUTHORIZED, "Invalid Credential", ex, request);
+    }
+
+    @ExceptionHandler(ForbiddenOperationException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ApiError handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+        return build(HttpStatus.FORBIDDEN, "Access Denied", ex, request);
     }
 
     // ======================
