@@ -1,4 +1,4 @@
-package com.nc.horseretail.datloader;
+package com.nc.horseretail.dataloader;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

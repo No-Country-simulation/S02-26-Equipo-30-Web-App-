@@ -1,4 +1,4 @@
-package com.nc.horseretail.datloader;
+package com.nc.horseretail.dataloader;
 
 import com.nc.horseretail.model.enums.RiskLevel;
 import com.nc.horseretail.model.horse.Horse;
