@@ -8,7 +8,8 @@ import java.util.UUID;
 
 @Getter
 @Builder
-public class ChatResponse {
+public class MessageResponse {
+
     private UUID messageId;
     private UUID conversationId;
     private UUID senderId;
