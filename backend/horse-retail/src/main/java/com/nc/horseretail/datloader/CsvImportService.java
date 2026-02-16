@@ -7,6 +7,7 @@ import com.nc.horseretail.model.listing.RiskAssessment;
 import com.nc.horseretail.model.user.User;
 import com.nc.horseretail.repository.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +18,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CsvImportService {
 
     private final CsvParsingService csvParsingService;
@@ -75,6 +77,8 @@ public class CsvImportService {
 
                 //TODO  create vets
             }
+
+            log.info("Successfully imported {} horses", rows.size());
 
         } catch (IOException e) {
             throw new IllegalStateException("Failed to import CSV", e);
