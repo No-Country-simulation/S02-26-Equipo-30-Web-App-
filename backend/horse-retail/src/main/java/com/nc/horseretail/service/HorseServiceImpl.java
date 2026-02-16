@@ -40,10 +40,10 @@ public class HorseServiceImpl implements HorseService {
     public long countTotalHorses() {
         return horseRepository.count();
     }
-    
+
     @Override
-    public long countTotalSellers() {
-        return userRepository.count();
+    public long countActiveSellers() {
+        return horseRepository.countDistinctOwners();
     }
 
     @Override

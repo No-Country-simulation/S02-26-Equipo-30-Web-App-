@@ -8,4 +8,5 @@ public interface UserService {
 //    User getProfile(Authentication auth);
 
     User getCurrentUser();
+
 }

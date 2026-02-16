@@ -12,7 +12,9 @@ public interface HorseService {
 
     List<HorseResponse> getAllHorses();
 
-    long countTotalHorses(); // Método independiente
+    long countTotalHorses();
+
+    long countActiveSellers();
     
     List<HorseResponse> searchHorses(String keyword);
 }
