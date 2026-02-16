@@ -10,6 +10,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/admin")
 public class AdminController {
 
+    // ============================
+    // ADMIN ACCESS
+    // ============================
     @GetMapping("/access")
     public ResponseEntity<String> access() {
         return new ResponseEntity<>("Access Granted", HttpStatus.OK);
