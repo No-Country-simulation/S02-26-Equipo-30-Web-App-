@@ -3,12 +3,34 @@ package com.nc.horseretail.mapper;
 import com.nc.horseretail.dto.HorseRequest;
 import com.nc.horseretail.dto.HorseResponse;
 import com.nc.horseretail.model.horse.Horse;
-import org.mapstruct.Mapper;
+import org.mapstruct.*;
 
-@Mapper(componentModel = "spring")
+@Mapper(
+        componentModel = "spring",
+        uses = {LocationMapper.class},
+        unmappedTargetPolicy = ReportingPolicy.IGNORE
+)
 public interface HorseMapper {
 
-    Horse toEntity(HorseRequest horse);
+    // ==============================
+    // CREATE
+    // ==============================
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "externalId", ignore = true)
+    @Mapping(target = "owner", ignore = true)
+    Horse toEntity(HorseRequest request);
 
+    // ==============================
+    // READ
+    // ==============================
     HorseResponse toDto(Horse horse);
+
+    // ==============================
+    // UPDATE
+    // ==============================
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "externalId", ignore = true)
+    @Mapping(target = "owner", ignore = true)
+    void updateEntityFromDto(HorseRequest request, @MappingTarget Horse horse);
 }
