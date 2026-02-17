@@ -25,17 +25,20 @@ public class SecurityConfig {
 
         http.csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .authorizeHttpRequests(auth -> auth.requestMatchers(
-                        "/api/v1/auth/**", "/v3/api-docs/**",
-                        "/swagger-ui/**", "/swagger-ui.html",
-                        "/api/v1/public" "/api/v1/metrics/sellers/count", 
-                        "/api/v1/metrics/satisfaction")
-
-                        .permitAll()
-                        .requestMatchers("/internal/ml/**").hasRole("ML_SERVICE")
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/metrics/feedback").authenticated()
-                        .anyRequest().authenticated()
+                .authorizeHttpRequests(auth -> auth
+                    .requestMatchers(
+                        "/api/v1/auth/**", 
+                        "/v3/api-docs/**",
+                        "/swagger-ui/**", 
+                        "/swagger-ui.html",
+                        "/api/v1/public", 
+                        "/api/v1/metrics/sellers/count", 
+                        "/api/v1/metrics/satisfaction"
+                    ).permitAll()
+                    .requestMatchers("/internal/ml/**").hasRole("ML_SERVICE")
+                    .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                    .requestMatchers("/api/v1/metrics/feedback").authenticated()
+                    .anyRequest().authenticated()
         )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
