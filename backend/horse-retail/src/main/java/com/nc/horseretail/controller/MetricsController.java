@@ -39,7 +39,7 @@ public class MetricsController {
     @ApiResponse(responseCode = "200", description = "Satisfaction metrics retrieved successfully")
     @ApiResponse(responseCode = "500", description = "Internal server error")
     @GetMapping("/satisfaction")
-    public ResponseEntity<FeedbackResponse> getSatisfactionMetrics() {
+    public ResponseEntity<FeedbackResponse> getSatisfactionScore() {
         log.info("Received request to get satisfaction metrics");
         return ResponseEntity.ok(metricsService.getSatisfactionMetrics());
     }
