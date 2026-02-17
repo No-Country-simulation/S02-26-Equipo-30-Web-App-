@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import uuid
 from datetime import datetime
+import json
 
 app = Flask(__name__)
 
@@ -40,9 +41,9 @@ def calculate_scores(df):
         "max_speed_kmh","h_temperament","h_category",
         "h_career_races","h_days_since_last_race","h_linaje"
     ]
+
     df["completeness"] = 1 - df[horse_cols].isna().sum(axis=1) / len(horse_cols)
 
-    # Vet score simplificado
     df["vet_score"] = np.where(
         df["vet_total_exams"] > 0,
         1 - (df["vet_major_issues"] / df["vet_total_exams"]),
@@ -50,9 +51,9 @@ def calculate_scores(df):
     )
 
     df["seller_score"] = (
-        0.4 * df["s_verified"].astype(int) +
-        0.3 * (1 - np.minimum(df["s_disputes"]/10,1)) +
-        0.3 * (1 - df["s_flagged_fraud"].astype(int))
+        0.4 * pd.to_numeric(df["s_verified"], errors="coerce").fillna(0) +
+        0.3 * (1 - np.minimum(pd.to_numeric(df["s_disputes"], errors="coerce").fillna(0)/10,1)) +
+        0.3 * (1 - pd.to_numeric(df["s_flagged_fraud"], errors="coerce").fillna(0))
     )
 
     df["horse_trust_score"] = (
@@ -60,6 +61,7 @@ def calculate_scores(df):
         0.4 * df["vet_score"] +
         0.2 * df["seller_score"]
     )
+
     return df
 
 # ---------------------------------------------------
@@ -69,7 +71,8 @@ def calculate_scores(df):
 def form():
     breed_options = "".join([f'<option value="{b}">{b}</option>' for b in BREED_STANDARDS.keys()])
     listing_status_options = "".join([f'<option value="{s}">{s}</option>' for s in ["active","sold","withdrawn"]])
-    return render_template_string(f"""
+
+    return render_template_string("""
     <h2>Registrar Nuevo Caballo</h2>
     <form method="post" action="/add_horse">
         <h3>🐎 Datos del Caballo</h3>
@@ -80,8 +83,11 @@ def form():
             <option value="Hembra">Hembra</option>
             <option value="Macho">Macho</option>
         </select><br>
+
         Raza:
-        <select name="raza" id="raza" required onchange="updateBreedInfo()">{breed_options}</select><br>
+        <select name="raza" id="raza" required onchange="updateBreedInfo()">
+            {{ breed_options|safe }}
+        </select><br>
 
         Altura (m): <input name="height_m" id="height_m" type="number" step="0.01" required><br>
         Peso (kg): <input name="weight_kg" id="weight_kg" type="number" required><br>
@@ -90,8 +96,12 @@ def form():
         Temperamento: <input name="h_temperament" id="h_temperament" readonly><br>
         Main use: <input name="h_category" id="h_category" readonly><br>
 
+        País actual: <input name="h_current_country" type="text" required><br>
+        País de nacimiento: <input name="h_birth_country" type="text" required><br>
+
         Carreras totales: <input name="h_career_races" type="number" required><br>
         Días desde última carrera: <input name="h_days_since_last_race" type="number" required><br>
+
         Linaje:
         <select name="h_linaje">
             <option value="Sí">Sí</option>
@@ -100,7 +110,10 @@ def form():
 
         <h3>💰 Listing</h3>
         Listing status:
-        <select name="l_listing_status">{listing_status_options}</select><br>
+        <select name="l_listing_status">
+            {{ listing_status_options|safe }}
+        </select><br>
+
         Precio USD: <input name="l_asking_price_usd" type="number" required><br>
 
         <h3>👤 Seller</h3>
@@ -109,8 +122,10 @@ def form():
             <option value="1">Sí</option>
             <option value="0">No</option>
         </select><br>
+
         Disputes: <input name="s_disputes" type="number" required><br>
         Num listings: <input name="s_num_listings" type="number" required><br>
+
         Fraud flag:
         <select name="s_flagged_fraud">
             <option value="1">Sí</option>
@@ -120,71 +135,72 @@ def form():
         <h3>🩺 Veterinaria</h3>
         Total exams: <input name="vet_total_exams" type="number" required><br>
         Major issues: <input name="vet_major_issues" type="number" required><br>
-        Exam date: <input name="v_exam_date" type="date" required><br>
+        Last Exam date: <input name="v_exam_date" type="date" required><br>
 
         <br><input type="submit" value="Registrar Caballo">
     </form>
 
     <script>
-    const breedData = {BREED_STANDARDS};
-    function updateBreedInfo(){{
+    const breedData = {{ breed_data | safe }};
+
+    function updateBreedInfo(){
         const sel = document.getElementById('raza').value;
         const b = breedData[sel];
+
         document.getElementById('h_temperament').value = b.temperament;
         document.getElementById('h_category').value = b.main_use;
 
         let avg = (arr) => Array.isArray(arr) ? (arr[0]+arr[1])/2 : arr;
+
         document.getElementById('height_m').value = avg(b.height_m).toFixed(2);
         document.getElementById('weight_kg').value = avg(b.weight_kg);
         document.getElementById('length_m').value = avg(b.length_m).toFixed(2);
         document.getElementById('max_speed_kmh').value = avg(b.max_speed_kmh);
-    }}
+    }
+
     window.onload = updateBreedInfo;
     </script>
-    """)
+    """,
+    breed_options=breed_options,
+    listing_status_options=listing_status_options,
+    breed_data=json.dumps(BREED_STANDARDS)
+    )
 
-# ---------------------------------------------------
-# Endpoint para crear nuevo caballo
 # ---------------------------------------------------
 @app.route("/add_horse", methods=["POST"])
 def add_horse():
     global df
     new_horse = request.form.to_dict()
 
-    # Generar IDs automáticos
     new_horse["horse_id"] = str(uuid.uuid4())[:8]
     new_horse["listing_id"] = str(uuid.uuid4())[:8]
     new_horse["seller_id"] = str(uuid.uuid4())[:8]
 
-    # Fechas automáticas
     new_horse["s_created_at"] = datetime.now()
     new_horse["s_last_active_at"] = datetime.now()
     new_horse["l_created_at"] = datetime.now()
 
-    # Convertir columnas numéricas
     numeric_cols = [
         "height_m","weight_kg","length_m","max_speed_kmh",
         "h_career_races","h_days_since_last_race",
-        "l_asking_price_usd","s_verified","s_disputes","s_num_listings","s_flagged_fraud",
+        "l_asking_price_usd","s_verified","s_disputes",
+        "s_num_listings","s_flagged_fraud",
         "vet_total_exams","vet_major_issues"
     ]
+
     for col in numeric_cols:
         new_horse[col] = float(new_horse[col])
 
-    # Agregar al DataFrame
     new_row = pd.DataFrame([new_horse])
     df = pd.concat([df, new_row], ignore_index=True)
 
-    # Calcular scores
     df = calculate_scores(df)
-
-    # Guardar CSV
     df.to_csv(DATA_PATH, index=False)
 
-    # Interpretación del score
     trust_score = df.iloc[-1]["horse_trust_score"] * 100
+
     if trust_score < 70:
-        interpretation = "Se recomienda revisar más datos. Índice bajo."
+        interpretation = "Se recomienda revisar y completar los datos. Al momento el Indice de confiabilidad es bajo."
     elif trust_score < 87:
         interpretation = "Confiable"
     else:
@@ -199,4 +215,3 @@ def add_horse():
 # ---------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
-

@@ -9,23 +9,25 @@ DATA_PATH = "/workspaces/S02-26-Equipo-30-Web-App-/data/horsetrust_database_inde
 # Cargar CSV existente
 try:
     df = pd.read_csv(DATA_PATH)
+    # Asegurar que horse_id sea string y quitar espacios invisibles
+    df['horse_id'] = df['horse_id'].astype(str).str.strip()
+    df.set_index("horse_id", inplace=True)
 except FileNotFoundError:
     df = pd.DataFrame()
     print("⚠️ Archivo no encontrado, asegúrate de que exista en la ruta:", DATA_PATH)
 
-# Establecer horse_id como índice
-if not df.empty:
-    df.set_index("horse_id", inplace=True)
-
 # Columnas que queremos mostrar en la consulta
 COLUMNS_TO_SHOW = [
     "horse_name",
+    "raza",
     "height_m",
     "weight_kg",
     "length_m",
     "max_speed_kmh",
     "h_career_races",
     "h_days_since_last_race",
+    "h_birth_country",
+    "h_current_country",
     "l_asking_price_usd",
     "s_disputes",
     "s_num_listings",
@@ -47,7 +49,7 @@ def form():
 # Endpoint para consultar horse_trust_score y columnas
 @app.route("/get_horse", methods=["POST"])
 def get_horse():
-    horse_id = request.form.get("horse_id", "").strip()
+    horse_id = str(request.form.get("horse_id", "")).strip()
     
     if horse_id not in df.index:
         return f"Horse ID '{horse_id}' no encontrado.", 404
@@ -87,4 +89,3 @@ def get_horse():
 # Ejecutar app en Codespaces en puerto 5001
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)
-
