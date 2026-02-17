@@ -35,4 +35,21 @@ public class HorseServiceImpl implements HorseService {
     public List<HorseResponse> getAllHorses() {
         return horseRepository.findAll().stream().map(horseMapper::toDto).toList();
     }
+
+    @Override
+    public long countTotalHorses() {
+        return horseRepository.count();
+    }
+
+    @Override
+    public long countActiveSellers() {
+        return horseRepository.countDistinctOwners();
+    }
+
+    @Override
+    public List<HorseResponse> searchHorses(String keyword) {
+        if (keyword == null || keyword.isBlank()) return getAllHorses();
+        return horseRepository.searchGlobal(keyword).stream()
+                .map(horseMapper::toDto).toList();
+    }
 }

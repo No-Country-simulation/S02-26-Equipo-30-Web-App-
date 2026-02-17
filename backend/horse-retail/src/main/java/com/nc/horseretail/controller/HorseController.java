@@ -48,6 +48,23 @@ public class HorseController {
         return ResponseEntity.ok(horses);
     }
 
+    @Operation(summary = "Count all horses", description = "Returns the total number of horses available")
+    @GetMapping("/count")
+    public ResponseEntity<Long> countHorses() {
+        log.info("Received request to count all horses");
+        return ResponseEntity.ok(horseService.countTotalHorses());
+    }
     //TODO get by id, count, update endpoints
+    @Operation(summary = "Search horses", description = "Filter by name, breed or discipline")
+    @GetMapping("/search")
+    public ResponseEntity<List<HorseResponse>> search(@RequestParam String keyword) {
+        return ResponseEntity.ok(horseService.searchHorses(keyword));
+    }
 
+    @Operation(summary = "Contar vendedores activos", description = "Devuelve la cantidad de propietarios únicos con caballos")
+    @GetMapping("/sellers/count")
+    public ResponseEntity<Long> getSellersCount() {
+        log.info("Petición para contar vendedores únicos");
+        return ResponseEntity.ok(horseService.countActiveSellers());
+    }
 }

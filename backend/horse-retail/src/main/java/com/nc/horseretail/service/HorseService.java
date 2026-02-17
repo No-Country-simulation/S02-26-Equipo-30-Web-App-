@@ -11,4 +11,10 @@ public interface HorseService {
     void createHorse(HorseRequest request, User owner);
 
     List<HorseResponse> getAllHorses();
+
+    long countTotalHorses();
+
+    long countActiveSellers();
+    
+    List<HorseResponse> searchHorses(String keyword);
 }
