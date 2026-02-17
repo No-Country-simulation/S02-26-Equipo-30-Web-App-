@@ -1,10 +1,11 @@
 package com.nc.horseretail.service;
 
 import com.nc.horseretail.dto.FeedbackRequest;
+import com.nc.horseretail.dto.FeedbackResponse;
 import  com.nc.horseretail.model.user.User;
 
 public interface MetricsService {
     long countActiveSellers();
-    Double getSatisfactionScore();
+    FeedbackResponse getSatisfactionMetrics();
     void saveFeedback(FeedbackRequest request, User user);
 }

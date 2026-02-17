@@ -41,7 +41,7 @@ public class MetricsController {
     @GetMapping("/satisfaction")
     public ResponseEntity<FeedbackResponse> getSatisfactionScore() {
         log.info("Received request to get satisfaction metrics");
-        return ResponseEntity.ok(metricsService.getSatisfactionScore());
+        return ResponseEntity.ok(metricsService.getSatisfactionMetrics());
     }
 
     // ============================
