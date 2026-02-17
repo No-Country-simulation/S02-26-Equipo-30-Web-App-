@@ -6,7 +6,7 @@ import com.nc.horseretail.model.feedback.Feedback;
 import com.nc.horseretail.model.user.User;
 import com.nc.horseretail.repository.HorseRepository;
 import com.nc.horseretail.repository.MetricsRepository;
-import com.nc.horseretail.repository.user.UserRepository;
+import com.nc.horseretail.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
