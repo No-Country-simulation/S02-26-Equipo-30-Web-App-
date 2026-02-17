@@ -4,6 +4,7 @@ import com.nc.horseretail.dto.ListingRequest;
 import com.nc.horseretail.dto.ListingResponse;
 import com.nc.horseretail.exception.BusinessException;
 import com.nc.horseretail.exception.ForbiddenOperationException;
+import com.nc.horseretail.exception.ResourceNotFoundException;
 import com.nc.horseretail.mapper.ListingMapper;
 import com.nc.horseretail.model.horse.Horse;
 import com.nc.horseretail.model.listing.Listing;
@@ -27,7 +28,7 @@ public class ListingServiceImpl implements ListingService {
     public ListingResponse createListing(ListingRequest dto, User currentUser) {
 
         Horse horse = horseRepository.findById(dto.getHorseId()).orElseThrow(
-                () -> new IllegalArgumentException("Horse not found with id: " + dto.getHorseId())
+                () -> new ResourceNotFoundException("Horse not found with id: " + dto.getHorseId())
         );
 
         if(!horse.getOwner().getId().equals(currentUser.getId())){

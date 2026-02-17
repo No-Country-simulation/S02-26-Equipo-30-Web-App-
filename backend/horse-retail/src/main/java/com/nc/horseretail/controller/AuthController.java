@@ -39,13 +39,13 @@ public class AuthController {
     // ============================
     // AUTHENTICATE EXISTING USER
     // ============================
-    @Operation(summary = "Authenticate an existing user")
+    @Operation(summary = "Login with existing user credentials")
     @ApiResponse(responseCode = "200", description = "User authenticated successfully")
     @ApiResponse(responseCode = "400", description = "Invalid credentials")
     @ApiResponse(responseCode = "500", description = "Internal server error")
-    @PostMapping("/authenticate")
-    public ResponseEntity<AuthResponse> authenticate(@RequestBody AuthRequest request) {
-        log.info("Authenticate request received");
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@RequestBody AuthRequest request) {
+        log.info("Login request received");
         return ResponseEntity.ok(authService.authenticate(request));
     }
 
