@@ -48,7 +48,8 @@ public class HorseController {
     // GET / SEARCH HORSES (PAGINATED)
     // ============================
     @Operation(summary = "Get or search horses",
-            description = "Retrieves a paginated list of horses. If a keyword is provided, it filters horses by name or breed")
+            description = "Retrieves a paginated list of horses. If a keyword is provided, " +
+                    "it filters horses by name, breed or main use. Otherwise, it returns all horses.")
     @ApiResponse(responseCode = "200", description = "Horses retrieved successfully")
     @GetMapping
     public ResponseEntity<Page<HorseResponse>> getHorses(
