@@ -4,6 +4,7 @@ import com.nc.horseretail.model.user.User;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -48,4 +49,12 @@ public class Horse {
     @Embedded
     private Location location;
 
+    private Double trustScore;
+
+    @Enumerated(EnumType.STRING)
+    private TrustScoreStatus trustScoreStatus;
+
+    private Instant trustScoreUpdatedAt;
+
+    private String trustModelVersion;
 }

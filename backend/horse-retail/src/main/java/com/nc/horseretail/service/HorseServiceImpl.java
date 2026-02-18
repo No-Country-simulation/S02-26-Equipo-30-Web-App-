@@ -2,10 +2,12 @@ package com.nc.horseretail.service;
 
 import com.nc.horseretail.dto.HorseRequest;
 import com.nc.horseretail.dto.HorseResponse;
+import com.nc.horseretail.dto.ml.MlHorseTrustScoreResponse;
 import com.nc.horseretail.exception.BusinessException;
 import com.nc.horseretail.exception.ResourceNotFoundException;
 import com.nc.horseretail.mapper.HorseMapper;
 import com.nc.horseretail.model.horse.Horse;
+import com.nc.horseretail.model.horse.TrustScoreStatus;
 import com.nc.horseretail.model.user.User;
 import com.nc.horseretail.repository.HorseRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +16,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -24,6 +28,7 @@ public class HorseServiceImpl implements HorseService {
 
     private final HorseRepository horseRepository;
     private final HorseMapper horseMapper;
+    private final MlConnectionService mlConnectionService;
 
     // ============================
     // CREATE HORSE
@@ -35,8 +40,24 @@ public class HorseServiceImpl implements HorseService {
 
         Horse horse = horseMapper.toEntity(request);
         horse.setOwner(owner);
+        horse.setTrustScoreStatus(TrustScoreStatus.PENDING);
 
-        horseRepository.save(horse);
+        Horse savedHorse = horseRepository.save(horse);
+
+        Optional<MlHorseTrustScoreResponse> mlResponse = mlConnectionService.requestTrustScore(savedHorse);
+        if (mlResponse.isPresent()) {
+            MlHorseTrustScoreResponse score = mlResponse.get();
+            savedHorse.setTrustScore(score.getTrustScore());
+            savedHorse.setTrustScoreStatus(TrustScoreStatus.READY);
+            savedHorse.setTrustScoreUpdatedAt(score.getGeneratedAt() != null ? score.getGeneratedAt() : Instant.now());
+            savedHorse.setTrustModelVersion(score.getModelVersion());
+            horseRepository.save(savedHorse);
+            return;
+        }
+
+        savedHorse.setTrustScoreStatus(TrustScoreStatus.FAILED);
+        savedHorse.setTrustScoreUpdatedAt(Instant.now());
+        horseRepository.save(savedHorse);
     }
 
     // ============================
