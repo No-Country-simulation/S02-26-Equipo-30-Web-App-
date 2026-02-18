@@ -18,22 +18,27 @@ public class MlIntegrationController {
     private final MlIntegrationService mlIntegrationService;
 
 
-    //    ML obtiene datos de un listing para analisis
+    //TODO ML gets listing data for analysis (features + historical data)
     @GetMapping("/listings/{listingId}")
     public ResponseEntity<MlListingDataResponse> getListingForAnalysis(@PathVariable UUID listingId) {
         return ResponseEntity.ok(mlIntegrationService.getListingDataForMl(listingId));
     }
 
-    //    ML obtiene dataset completo de listings para entrenar modelo
+    //TODO ML gets all listings data for training (features + historical data + labels)
     @GetMapping("/dataset/listings")
     public ResponseEntity<List<MlListingDataResponse>> getListingsDataset() {
         return ResponseEntity.ok(mlIntegrationService.getAllListingsDataset());
     }
 
-    //     ML envia resultado de analisis de riesgo para un listing
+    //TODO ML sends risk analysis results for a listing (listingId + riskScore + riskFactors)
     @PostMapping("/results")
     public ResponseEntity<Void> receiveRiskResult(@RequestBody MlRiskResultRequest request) {
         mlIntegrationService.processRiskResult(request);
         return ResponseEntity.ok().build();
     }
+    //TODO POST /predict-price
+    //TODO POST /recommendations
+    //TODO GET /recommendations/me
+    //TODO POST /analyze-horse
+    //TODO POST /fraud-detection
 }

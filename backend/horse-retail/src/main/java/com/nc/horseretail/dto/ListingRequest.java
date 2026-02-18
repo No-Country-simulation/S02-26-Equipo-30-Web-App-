@@ -1,11 +1,20 @@
 package com.nc.horseretail.dto;
 
-import lombok.Data;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.UUID;
 
-@Data
+@Getter
+@Setter
 public class ListingRequest {
-    private UUID ownerId;
+
+    @NotNull
     private UUID horseId;
+
+    @NotNull
+    @Positive
     private Double price;
 }

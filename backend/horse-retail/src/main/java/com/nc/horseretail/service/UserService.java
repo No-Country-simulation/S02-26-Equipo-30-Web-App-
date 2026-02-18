@@ -1,11 +1,10 @@
 package com.nc.horseretail.service;
 
-import com.nc.horseretail.model.user.User;
-import org.apache.tomcat.util.net.openssl.ciphers.Authentication;
+import com.nc.horseretail.dto.UserResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface UserService {
 
-//    User getProfile(Authentication auth);
-
-    User getCurrentUser();
+    Page<UserResponse> getAllUsers(Pageable pageable);
 }

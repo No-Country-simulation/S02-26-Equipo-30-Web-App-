@@ -1,32 +1,25 @@
 package com.nc.horseretail.service;
 
-import com.nc.horseretail.model.user.User;
+import com.nc.horseretail.dto.UserResponse;
+import com.nc.horseretail.mapper.UserMapper;
 import com.nc.horseretail.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.apache.tomcat.util.net.openssl.ciphers.Authentication;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final UserMapper userMapper;
 
-    //TODO implement method
-//    @Override
-//    public User getProfile(Authentication auth) {
-//        return (User) auth.getPrincipal();
-//    }
 
     @Override
-    public User getCurrentUser() {
-
-        //TODO implement method
-//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-//        String email = authentication.getName();
-//        return userRepository.findByEmail(email).orElseThrow(() -> new UsernameNotFoundException("User not found"));
-        return null;
+    public Page<UserResponse> getAllUsers(Pageable pageable) {
+        return userRepository.findAll(pageable).map(userMapper::toDto);
     }
 }

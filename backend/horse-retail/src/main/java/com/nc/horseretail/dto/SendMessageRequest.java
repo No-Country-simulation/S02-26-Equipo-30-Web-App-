@@ -10,10 +10,12 @@ import java.util.UUID;
 
 @Getter
 @Setter
-public class ChatRequest {
+public class SendMessageRequest {
+
     @NotNull
     private UUID listingId;
+
     @NotBlank
-    @Size(min = 1, max = 2000)
+    @Size(max = 2000)
     private String text;
 }
