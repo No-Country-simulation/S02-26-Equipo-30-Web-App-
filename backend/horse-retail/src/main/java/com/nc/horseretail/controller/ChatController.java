@@ -24,6 +24,7 @@ public class ChatController {
     // ============================
     // SEND MESSAGE
     // ============================
+    //TODO POST /conversations  → AUTH (iniciar conversación por listingId)
     @Operation(summary = "Send a message in a conversation")
     @ApiResponse(responseCode = "200", description = "Message sent successfully")
     @ApiResponse(responseCode = "400", description = "Invalid input")
@@ -42,6 +43,7 @@ public class ChatController {
     // ============================
     // GET CONVERSATIONS
     // ============================
+    //TODO GET /conversations  → AUTH (lista conversaciones del user)
     @Operation(summary = "Get all conversations for the authenticated user")
     @ApiResponse(responseCode = "200", description = "Conversations retrieved successfully")
     @ApiResponse(responseCode = "400", description = "Invalid input")
@@ -58,6 +60,7 @@ public class ChatController {
     // ============================
     // GET CONVERSATION DETAILS
     // ============================
+    //TODO GET /conversations/{conversationId}  → AUTH (solo participantes)
     @Operation(summary = "Get details of a specific conversation")
     @ApiResponse(responseCode = "200", description = "Conversation details retrieved successfully")
     @ApiResponse(responseCode = "400", description = "Invalid conversation ID")
@@ -72,4 +75,10 @@ public class ChatController {
                 chatService.getConversation(conversationId, user.getDomainUser())
         );
     }
+
+    //TODO GET /conversations/{conversationId}/messages  → AUTH
+    //TODO POST /conversations/{conversationId}/messages  → AUTH
+    //TODO PATCH /conversations/{conversationId}/close  → AUTH (participante)
+    //TODO GET /unread/count  → AUTH
+    //TODO PATCH /messages/{messageId}/read  → AUTH
 }

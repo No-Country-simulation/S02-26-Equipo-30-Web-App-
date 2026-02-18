@@ -20,6 +20,7 @@ public class ListingController {
 
     private final ListingService listingService;
 
+    //TODO POST /  → AUTH
     @PostMapping
     public ResponseEntity<ListingResponse> createListing(@RequestBody ListingRequest dto,
                                                          @AuthenticationPrincipal SecurityUser securityUser) {
@@ -27,4 +28,18 @@ public class ListingController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(listingService.createListing(dto, securityUser.getDomainUser()));
     }
+
+    //TODO GET /  → PUBLIC (paginado + filtros)
+    //TODO GET /{listingId}  → PUBLIC
+    //TODO PUT /{listingId}  → AUTH (owner only)
+    //TODO DELETE /{listingId}  → AUTH (owner only)
+    //TODO PATCH /{listingId}/activate  → AUTH (owner)
+    //TODO PATCH /{listingId}/pause  → AUTH (owner)
+    //TODO PATCH /{listingId}/sold  → AUTH (owner)
+    //TODO PATCH /{listingId}/cancel  → AUTH (owner)
+    //TODO GET /me  → AUTH
+    //TODO GET /me/active  → AUTH
+    //TODO GET /me/sold  → AUTH
+    //TODO GET /me/count  → AUTH
+    //TODO GET /search  → PUBLIC
 }
