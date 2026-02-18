@@ -61,23 +61,15 @@ public class ListingCsvMapper {
 
     private ListingStatus mapStatus(String value) {
 
-        if (value == null) return ListingStatus.DRAFT;
-
-        String normalized = value.toLowerCase();
-
-        if (normalized.contains("active") || normalized.contains("public")) {
-            return ListingStatus.PUBLIC;
+        if (value == null || value.isBlank()) {
+            return null;
         }
 
-        if (normalized.contains("under")) {
-            return ListingStatus.UNDER_REVIEW;
+        try {
+            return ListingStatus.valueOf(value.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Invalid listing status: " + value);
         }
-
-        if (normalized.contains("sold") || normalized.contains("closed")) {
-            return ListingStatus.CLOSED;
-        }
-
-        return ListingStatus.DRAFT;
     }
 
     private OverallVerificationStatus mapVerification(Boolean verified) {
