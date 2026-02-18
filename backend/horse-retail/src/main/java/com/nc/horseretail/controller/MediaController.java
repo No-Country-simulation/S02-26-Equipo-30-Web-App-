@@ -28,4 +28,10 @@ public class MediaController {
             @PathVariable UUID horseId) {
         return ResponseEntity.ok(mediaService.getMediaByHorse(horseId));
     }
+
+    //TODO POST /upload  → AUTH
+    //TODO DELETE /{fileId}  → AUTH (owner or ADMIN)
+    //TODO GET /{fileId}  → PUBLIC
+    //TODO GET /listing/{listingId}  → PUBLIC
+    //TODO GET /horse/{horseId}  → PUBLIC
 }

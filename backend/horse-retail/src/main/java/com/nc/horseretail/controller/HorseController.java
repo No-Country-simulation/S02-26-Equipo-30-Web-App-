@@ -10,6 +10,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -30,80 +32,111 @@ public class HorseController {
     // ============================
     // CREATE HORSE
     // ============================
-    @Operation(summary = "Create a new horse", description = "Creates a new horse with the provided details")
-    @ApiResponse(responseCode = "200", description = "Horse created successfully")
+    @Operation(summary = "Create a new horse", description = "Creates a new horse owned by the authenticated user")
+    @ApiResponse(responseCode = "201", description = "Horse created successfully")
     @ApiResponse(responseCode = "400", description = "Invalid request data")
-    @ApiResponse(responseCode = "500", description = "Internal server error")
+    @ApiResponse(responseCode = "401", description = "Unauthorized")
     @PostMapping
     public ResponseEntity<Void> createHorse(@Valid @RequestBody HorseRequest request,
                                             @AuthenticationPrincipal SecurityUser securityUser) {
-        log.info("Received request to create horse");
+        log.info("Creating horse for user {}", securityUser.getUsername());
         horseService.createHorse(request, securityUser.getDomainUser());
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     // ============================
-    // GET ALL HORSES
+    // GET / SEARCH HORSES (PAGINATED)
     // ============================
-    @Operation(summary = "Get all horses", description = "Retrieves a list of all horses")
+    @Operation(summary = "Get or search horses",
+            description = "Retrieves a paginated list of horses. If a keyword is provided, " +
+                    "it filters horses by name, breed or main use. Otherwise, it returns all horses.")
     @ApiResponse(responseCode = "200", description = "Horses retrieved successfully")
-    @ApiResponse(responseCode = "500", description = "Internal server error")
     @GetMapping
-    public ResponseEntity<List<HorseResponse>> getAllHorses() {
-        log.info("Received request to get all horses");
-        List<HorseResponse> horses = horseService.getAllHorses();
-        return ResponseEntity.ok(horses);
+    public ResponseEntity<Page<HorseResponse>> getHorses(
+            @RequestParam(required = false) String keyword,
+            Pageable pageable) {
+        return ResponseEntity.ok(
+                horseService.getHorses(keyword, pageable)
+        );
     }
 
     // ============================
     // GET HORSE BY ID
     // ============================
-    @Operation(summary = "Get horse by ID", description = "Retrieves details of a specific horse by its ID")
+    @Operation(summary = "Get horse by ID",
+            description = "Retrieves full details of a specific horse")
     @ApiResponse(responseCode = "200", description = "Horse retrieved successfully")
     @ApiResponse(responseCode = "404", description = "Horse not found")
-    @ApiResponse(responseCode = "500", description = "Internal server error")
     @GetMapping("/{id}")
     public ResponseEntity<HorseResponse> getHorseById(@PathVariable UUID id) {
-        log.info("Received request to get horse by ID: {}", id);
+        log.info("Fetching horse {}", id);
         return ResponseEntity.ok(horseService.getHorseById(id));
     }
 
     // ============================
     // UPDATE HORSE
     // ============================
-    @Operation(summary = "Update horse details", description = "Updates the details of an existing horse")
+    @Operation(summary = "Update horse",
+            description = "Updates a horse owned by the authenticated user")
     @ApiResponse(responseCode = "200", description = "Horse updated successfully")
-    @ApiResponse(responseCode = "400", description = "Invalid request data")
+    @ApiResponse(responseCode = "401", description = "Unauthorized")
+    @ApiResponse(responseCode = "403", description = "Not owner of the horse")
     @ApiResponse(responseCode = "404", description = "Horse not found")
-    @ApiResponse(responseCode = "500", description = "Internal server error")
     @PatchMapping("/{id}")
     public ResponseEntity<HorseResponse> updateHorse(@PathVariable UUID id,
                                                      @Valid @RequestBody HorseRequest request,
                                                      @AuthenticationPrincipal SecurityUser securityUser) {
-        log.info("Received request to update horse with ID: {}", id);
-        return ResponseEntity.ok(horseService.updateHorse(id, request, securityUser.getDomainUser()));
+        log.info("Updating horse {} by user {}", id, securityUser.getUsername());
+        return ResponseEntity.ok(
+                horseService.updateHorse(id, request, securityUser.getDomainUser())
+        );
     }
 
     // ============================
-    // COUNT HORSES
+    // DELETE HORSE
     // ============================
-    @Operation(summary = "Count all horses", description = "Returns the total number of horses available")
-    @ApiResponse(responseCode = "200", description = "Horse count retrieved successfully")
-    @ApiResponse(responseCode = "500", description = "Internal server error")
-    @GetMapping("/count")
-    public ResponseEntity<Long> countHorses() {
-        log.info("Received request to count all horses");
-        return ResponseEntity.ok(horseService.countTotalHorses());
+    @Operation(summary = "Delete horse",
+            description = "Deletes a horse owned by the authenticated user")
+    @ApiResponse(responseCode = "204", description = "Horse deleted successfully")
+    @ApiResponse(responseCode = "403", description = "Not owner of the horse")
+    @ApiResponse(responseCode = "404", description = "Horse not found")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteHorse(@PathVariable UUID id,
+                                            @AuthenticationPrincipal SecurityUser securityUser) {
+        log.info("Deleting horse {} by user {}", id, securityUser.getUsername());
+        horseService.deleteHorse(id, securityUser.getDomainUser());
+        return ResponseEntity.noContent().build();
     }
 
     // ============================
-    // SEARCH HORSES
+    // GET MY HORSES
     // ============================
-    @Operation(summary = "Search horses", description = "Filter by name, breed or discipline")
+    @Operation(summary = "Get my horses",
+            description = "Returns all horses owned by the authenticated user")
     @ApiResponse(responseCode = "200", description = "Horses retrieved successfully")
-    @ApiResponse(responseCode = "500", description = "Internal server error")
-    @GetMapping("/search")
-    public ResponseEntity<List<HorseResponse>> search(@RequestParam String keyword) {
-        return ResponseEntity.ok(horseService.searchHorses(keyword));
+    @GetMapping("/me")
+    public ResponseEntity<List<HorseResponse>> getMyHorses(
+            @AuthenticationPrincipal SecurityUser securityUser) {
+
+        log.info("Fetching horses for user {}", securityUser.getUsername());
+        return ResponseEntity.ok(
+                horseService.getMyHorses(securityUser.getDomainUser())
+        );
+    }
+
+    // ============================
+    // COUNT MY HORSES
+    // ============================
+    @Operation(summary = "Count my horses",
+            description = "Returns total number of horses owned by authenticated user")
+    @ApiResponse(responseCode = "200", description = "Count retrieved successfully")
+    @GetMapping("/me/count")
+    public ResponseEntity<Long> countMyHorses(
+            @AuthenticationPrincipal SecurityUser securityUser) {
+
+        log.info("Counting horses for user {}", securityUser.getUsername());
+        return ResponseEntity.ok(
+                horseService.countMyHorses(securityUser.getDomainUser())
+        );
     }
 }

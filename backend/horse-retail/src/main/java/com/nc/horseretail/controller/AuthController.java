@@ -61,4 +61,9 @@ public class AuthController {
         log.info("🔁 Refresh request received");
         return ResponseEntity.ok(authService.refreshToken(request.getRefreshToken()));
     }
+
+    //TODO POST /forgot-password  → PUBLIC
+    //TODO POST /reset-password  → PUBLIC
+    //TODO POST /logout  → AUTH
+    //TODO GET /me  → AUTH
 }

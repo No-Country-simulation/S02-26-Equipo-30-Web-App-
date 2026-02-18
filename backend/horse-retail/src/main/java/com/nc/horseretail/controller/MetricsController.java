@@ -2,6 +2,7 @@ package com.nc.horseretail.controller;
 
 import com.nc.horseretail.dto.FeedbackRequest;
 import com.nc.horseretail.dto.FeedbackResponse;
+import com.nc.horseretail.service.HorseService;
 import com.nc.horseretail.service.MetricsService;
 import com.nc.horseretail.config.SecurityUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,10 +20,12 @@ import org.springframework.web.bind.annotation.*;
 public class MetricsController {
 
     private final MetricsService metricsService;
+    private final HorseService horseService;
 
     // ============================
     // COUNT SELLERS
     // ============================
+    //TODO GET /sellers/count  → PUBLIC
     @Operation(summary = "Count active sellers", description = "Returns the total number of unique active sellers with listings")
     @ApiResponse(responseCode = "200", description = "Seller count retrieved successfully")
     @ApiResponse(responseCode = "500", description = "Internal server error")
@@ -61,4 +64,26 @@ public class MetricsController {
         
         return ResponseEntity.ok("Feedback submitted successfully");
     }
+
+    // ============================
+    // COUNT HORSES
+    // ============================
+    //TODO GET /horses/count  → PUBLIC
+    @Operation(summary = "Count all horses", description = "Returns the total number of horses available")
+    @ApiResponse(responseCode = "200", description = "Horse count retrieved successfully")
+    @ApiResponse(responseCode = "500", description = "Internal server error")
+    @GetMapping("/count")
+    public ResponseEntity<Long> countHorses() {
+        log.info("Received request to count all horses");
+        return ResponseEntity.ok(horseService.countTotalHorses());
+    }
+
+    //TODO GET /listings/count  → PUBLIC
+    //TODO GET /breeds/top  → PUBLIC
+    //TODO GET /countries/top  → PUBLIC
+    //TODO GET /users/count  → ADMIN ONLY
+    //TODO GET /conversations/count  → ADMIN ONLY
+    //TODO GET /listings/sold/count  → ADMIN ONLY
+    //TODO GET /revenue/total  → ADMIN ONLY
+    //TODO GET /growth/monthly  → ADMIN ONLY
 }
