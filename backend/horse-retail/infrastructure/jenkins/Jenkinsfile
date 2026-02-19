@@ -1,30 +1,30 @@
 def deployApp(Map config) {
     def composeFile = config.composeFile ?: 'docker-compose.yml'
 
-    def sshCredId = config.sshKeyCredentialId ?: env.SSH_KEY_CRED
-    def vmHostCredId = config.vmHostCredentialId ?: env.VM_HOST_CRED
-    def dbUserCredId = config.dbUserCredentialId ?: env.DB_USER_CRED
-    def dbPassCredId = config.dbPasswordCredentialId ?: env.DB_PASS_CRED
-    def dbUrlCredId = config.dbUrlCredentialId ?: env.DB_URL_CRED
-    def secretKeyCredId = config.secretKeyCredentialId ?: env.SECRET_KEY_CRED
-    def dockerCredId = config.dockerCredentialId ?: env.DOCKERHUB_CREDENTIALS
+    // Mapping variables to the IDs passed from the stage
+    def sshCredId = config.sshKeyCredentialId
+    def vmHostCredId = config.vmHostCredentialId
+    def dbNameCredId = config.dbUserCredentialId    // This holds 'HorseTrustDb1'
+    def dbPassCredId = config.dbPasswordCredentialId
+    def dbUrlCredId = config.dbUrlCredentialId
+    def secretKeyCredId = config.secretKeyCredentialId
+    def dockerCredId = config.dockerCredentialId
 
+    // Validation
     def missing = []
-    if (!sshCredId) { missing << 'sshKeyCredentialId' }
-    if (!vmHostCredId) { missing << 'vmHostCredentialId' }
-    if (!dbUserCredId) { missing << 'dbUserCredentialId' }
-    if (!dbPassCredId) { missing << 'dbPasswordCredentialId' }
-    if (!dbUrlCredId) { missing << 'dbUrlCredentialId' }
-    if (!secretKeyCredId) { missing << 'secretKeyCredentialId' }
-    if (!dockerCredId) { missing << 'dockerCredentialId' }
+    if (!sshCredId) missing << 'sshKeyCredentialId'
+    if (!vmHostCredId) missing << 'vmHostCredentialId'
+    if (!dbNameCredId) missing << 'dbUserCredentialId'
+    if (!dbPassCredId) missing << 'dbPasswordCredentialId'
+    if (!dbUrlCredId) missing << 'dbUrlCredentialId'
+    if (!secretKeyCredId) missing << 'secretKeyCredentialId'
+    if (!dockerCredId) missing << 'dockerCredentialId'
     if (missing) { error("Missing required credential ids: ${missing.join(', ')}") }
-
-    echo "Using credential IDs (these are ids, not secrets): ssh=${sshCredId}, vmHost=${vmHostCredId}, dbUser=${dbUserCredId}, dbPass=${dbPassCredId}, dbUrl=${dbUrlCredId}, secretKey=${secretKeyCredId}, docker=${dockerCredId}"
 
     def creds = [
         sshUserPrivateKey(credentialsId: sshCredId, keyFileVariable: 'SSH_KEY'),
         string(credentialsId: vmHostCredId, variable: 'VM_HOST'),
-        string(credentialsId: dbUserCredId, variable: 'POSTGRES_USER'),
+        string(credentialsId: dbNameCredId, variable: 'RAW_DB_NAME'),
         string(credentialsId: dbPassCredId, variable: 'POSTGRES_PASSWORD'),
         string(credentialsId: dbUrlCredId, variable: 'POSTGRES_DOCKER_URL'),
         string(credentialsId: secretKeyCredId, variable: 'SECRET_KEY'),
@@ -36,66 +36,62 @@ def deployApp(Map config) {
          def imageTag = config.imageTag
          def fullBackendImage = "${deployImage}:${imageTag}"
 
-         def pgHost = 'database'
-         def pgPort = '5432'
-         def pgDb   = 'horse_db'
-
-         def hasBadChars = { v ->
-            if (v == null) return true
-            if (v.contains('\r')) return true
-            if (v.trim().length() == 0) return true
-            if ((v.startsWith("'") && v.endsWith("'")) || (v.startsWith('"') && v.endsWith('"'))) return true
-            return false
-         }
-
-         def stripQuotesAndCR = { v ->
+         // Helper to clean invisible characters (CRLF) and quotes
+         def clean = { v ->
             if (v == null) return ''
-            def s = v.replaceAll('\r', '')
+            def s = v.replaceAll('\r', '').trim()
             if ((s.startsWith("'") && s.endsWith("'")) || (s.startsWith('"') && s.endsWith('"'))) {
                 s = s.substring(1, s.length()-1)
             }
             return s
          }
 
-         def cleanedPostgresUrl = stripQuotesAndCR(POSTGRES_DOCKER_URL)
-         def cleanedPostgresUser = stripQuotesAndCR(POSTGRES_USER)
-         def cleanedPostgresPass = stripQuotesAndCR(POSTGRES_PASSWORD)
-         def cleanedSecretKey = stripQuotesAndCR(SECRET_KEY)
+         def cleanedDbName = clean(RAW_DB_NAME)
+         def cleanedDbPass = clean(POSTGRES_PASSWORD)
+         def cleanedDbUrl = clean(POSTGRES_DOCKER_URL)
+         def cleanedSecretKey = clean(SECRET_KEY)
 
-         def problems = []
-         if (hasBadChars(cleanedPostgresUrl)) { problems << 'POSTGRES_DOCKER_URL (empty or contains CR/quotes)'}
-         if (hasBadChars(cleanedPostgresUser)) { problems << 'POSTGRES_USER (empty or contains CR/quotes)'}
-         if (hasBadChars(cleanedPostgresPass)) { problems << 'POSTGRES_PASSWORD (empty or contains CR/quotes)'}
-         if (hasBadChars(cleanedSecretKey)) { problems << 'SECRET_KEY (empty or contains CR/quotes)'}
-         if (problems) { error("Invalid environment values detected before deploy: ${problems.join(', ')}") }
-
+         // Build the .env file content
+         // Note: We use cleanedDbName for both USER and DB to match standard Postgres Docker behavior
          def envLines = []
          envLines << "BACKEND_IMAGE=${fullBackendImage}"
          envLines << "COMPOSE_PROJECT_NAME=horsetrust-backend"
-         envLines << "POSTGRES_HOST=${pgHost}"
-         envLines << "POSTGRES_PORT=${pgPort}"
-         envLines << "POSTGRES_DB=${pgDb}"
-         envLines << "POSTGRES_DOCKER_DB=${pgDb}"
-         envLines << "POSTGRES_USER=${cleanedPostgresUser}"
-         envLines << "POSTGRES_PASSWORD=${cleanedPostgresPass}"
-         envLines << "POSTGRES_DOCKER_URL=${cleanedPostgresUrl}"
-         envLines << "POSTGRES_URL=${cleanedPostgresUrl}"
-         envLines << "SPRING_PROFILE=prod"
+         envLines << "POSTGRES_HOST=database"
+         envLines << "POSTGRES_PORT=5432"
+         envLines << "POSTGRES_DB=${cleanedDbName}"
+         envLines << "POSTGRES_USER=postgres"
+         envLines << "POSTGRES_PASSWORD=${cleanedDbPass}"
+         envLines << "SPRING_DATASOURCE_URL=${cleanedDbUrl}"
+         envLines << "SPRING_PROFILES_ACTIVE=prod"
          envLines << "SECRET_KEY=${cleanedSecretKey}"
 
          def envContent = envLines.join('\n')
 
-         echo "Deploying image: ${fullBackendImage} to VM host credential id: ${vmHostCredId}"
+         echo "Deploying to ${VM_HOST}. DB Name used: ${cleanedDbName}"
 
+         // 1. Prepare directory
          sh "ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} 'mkdir -p ${VM_PROJECT_PATH}'"
 
+         // 2. Transfer Docker Compose
          sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no backend/horse-retail/infrastructure/docker/${composeFile} ${VM_USER}@${VM_HOST}:${VM_PROJECT_PATH}/docker-compose.yml"
 
+         // 3. Generate and transfer .env
          writeFile file: 'remote.env', text: envContent
-
          sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no remote.env ${VM_USER}@${VM_HOST}:${VM_PROJECT_PATH}/.env"
 
-         sh "ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} 'cd ${VM_PROJECT_PATH} && sudo docker network create horse-net 2>/dev/null || true && echo Logging into Docker Hub && echo ${DOCKERHUB_PASS} | sudo docker login -u ${DOCKERHUB_USER} --password-stdin && sudo docker compose --env-file .env pull && sudo docker compose --env-file .env up -d --force-recreate && sudo docker image prune -f && sudo docker logout'"
+         // 4. Remote execution
+         // WE ADD 'docker compose down -v' to ensure the database is recreated with the NEW name
+         sh """
+            ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} '
+                cd ${VM_PROJECT_PATH} &&
+                sudo docker network create horse-net 2>/dev/null || true &&
+                echo ${DOCKERHUB_PASS} | sudo docker login -u ${DOCKERHUB_USER} --password-stdin &&
+                sudo docker compose pull &&
+                sudo docker compose down -v &&
+                sudo docker compose up -d --force-recreate &&
+                sudo docker image prune -f &&
+                sudo docker logout'
+         """
 
          sh 'rm -f remote.env'
      }
@@ -114,7 +110,6 @@ pipeline {
         VM_PROJECT_PATH            = '/home/jenkins/horsetrust'
         IMAGE_NAME                 = "local/horsetrust"
         DOCKERHUB_CREDENTIALS      = 'edydockers-credentials'
-
         APP_DIR                    = 'backend/horse-retail'
         DOCKER_DIR                 = 'backend/horse-retail/infrastructure/docker'
     }
@@ -133,34 +128,21 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    sh "docker build -t ${IMAGE_NAME} -f ${DOCKER_DIR}/Dockerfile ${APP_DIR}"
-                }
-            }
-        }
-
-        stage('Push Docker Image') {
+        stage('Build and Push Image') {
             steps {
                 script {
                     def imageToPush = "edydockers/backend-horsetrust"
                     def imageTag = "prod-${env.BUILD_NUMBER}"
-                    def latestTag = "latest"
+
+                    sh "docker build -t ${IMAGE_NAME} -f ${DOCKER_DIR}/Dockerfile ${APP_DIR}"
 
                     withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CREDENTIALS, usernameVariable: 'DUSER', passwordVariable: 'DPASS')]) {
-                        sh """#!/bin/bash
-                            set -euo pipefail
-                            echo '${DPASS}' | docker login -u '${DUSER}' --password-stdin
-
-                            docker tag ${IMAGE_NAME} ${imageToPush}:${imageTag}
-                            docker push ${imageToPush}:${imageTag}
-
-                            docker tag ${IMAGE_NAME} ${imageToPush}:${latestTag}
-                            docker push ${imageToPush}:${latestTag}
-
-                            docker logout
-                        """
+                        sh "echo '${DPASS}' | docker login -u '${DUSER}' --password-stdin"
+                        sh "docker tag ${IMAGE_NAME} ${imageToPush}:${imageTag}"
+                        sh "docker tag ${IMAGE_NAME} ${imageToPush}:latest"
+                        sh "docker push ${imageToPush}:${imageTag}"
+                        sh "docker push ${imageToPush}:latest"
+                        sh "docker logout"
                     }
                 }
             }
@@ -173,9 +155,9 @@ pipeline {
                         vmHostCredentialId: 'vm-ip-98',
                         imageTag: "prod-${env.BUILD_NUMBER}",
                         sshKeyCredentialId: 'vm-ssh-key-98',
-                        dbUserCredentialId: 'horsetrust-db-name',
+                        dbUserCredentialId: 'horsetrust-db-name',   // Injects 'HorseTrustDb1'
                         dbPasswordCredentialId: 'horsetrust-db-pass',
-                        dbUrlCredentialId: 'horsetrust-db-url',
+                        dbUrlCredentialId: 'horsetrust-db-url',     // Ensure this ends in /HorseTrustDb1
                         secretKeyCredentialId: 'horsetrust-secret-key'
                     )
                  }
@@ -185,9 +167,7 @@ pipeline {
 
     post {
         always {
-            script {
-                sh "docker rmi ${IMAGE_NAME} || true"
-            }
+            sh "docker rmi ${IMAGE_NAME} || true"
             cleanWs()
         }
     }
