@@ -57,11 +57,14 @@ def deployApp(Map config) {
          envLines << "SPRING_DATASOURCE_URL=${cleanedDbUrl}"
          envLines << "SECRET_KEY=${cleanedSecretKey}"
 
-         // Force Swagger UI on in Prod
+         // Force Swagger UI & Proxy support on in Prod
          envLines << "SPRINGDOC_SWAGGER_UI_ENABLED=true"
          envLines << "SPRINGDOC_API_DOCS_ENABLED=true"
+         envLines << "SERVER_FORWARD_HEADERS_STRATEGY=framework"
 
          def envContent = envLines.join('\n')
+
+         echo "Cleaning environment and deploying to ${VM_HOST}..."
 
          sh "ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} 'mkdir -p ${VM_PROJECT_PATH}'"
          sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no backend/horse-retail/infrastructure/docker/${composeFile} ${VM_USER}@${VM_HOST}:${VM_PROJECT_PATH}/docker-compose.yml"
@@ -71,6 +74,13 @@ def deployApp(Map config) {
          sh """
             ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} '
                 cd ${VM_PROJECT_PATH} &&
+                sudo docker network create horse-net 2>/dev/null || true &&
+
+                # --- FORCED CLEANUP START ---
+                # Remove containers if they exist to prevent "name in use" conflicts
+                sudo docker rm -f horsetrust-backend-database-1 horsetrust-backend-spring-1 2>/dev/null || true
+                # -----------------------------
+
                 echo ${DPASS} | sudo docker login -u ${DUSER} --password-stdin &&
                 sudo docker compose pull &&
                 sudo docker compose down -v &&
@@ -93,6 +103,12 @@ pipeline {
         DOCKER_DIR = 'backend/horse-retail/infrastructure/docker'
     }
     stages {
+        stage('Checkout Source Code') {
+            steps {
+                cleanWs(deleteDirs: true)
+                checkout scm
+            }
+        }
         stage('Build') { steps { sh "mvn -f ${APP_DIR}/pom.xml clean install -DskipTests" } }
         stage('Docker Build/Push') {
             steps { script {
@@ -102,7 +118,9 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CREDENTIALS, usernameVariable: 'DUSER', passwordVariable: 'DPASS')]) {
                     sh "echo '${DPASS}' | docker login -u '${DUSER}' --password-stdin"
                     sh "docker tag ${IMAGE_NAME} ${imageToPush}:${imageTag}"
+                    sh "docker tag ${IMAGE_NAME} ${imageToPush}:latest"
                     sh "docker push ${imageToPush}:${imageTag}"
+                    sh "docker push ${imageToPush}:latest"
                 }
             } }
         }
@@ -119,6 +137,12 @@ pipeline {
                     dockerCredentialId: env.DOCKERHUB_CREDENTIALS
                 )
             } }
+        }
+    }
+    post {
+        always {
+            sh "docker rmi ${IMAGE_NAME} || true"
+            cleanWs()
         }
     }
 }
