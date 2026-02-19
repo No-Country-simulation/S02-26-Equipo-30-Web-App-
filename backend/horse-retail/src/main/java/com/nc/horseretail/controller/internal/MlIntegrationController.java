@@ -19,19 +19,19 @@ public class MlIntegrationController {
 
 
     //TODO ML gets listing data for analysis (features + historical data)
-    @GetMapping("/listings/{listingId}")
+//    @GetMapping("/listings/{listingId}")
     public ResponseEntity<MlListingDataResponse> getListingForAnalysis(@PathVariable UUID listingId) {
         return ResponseEntity.ok(mlIntegrationService.getListingDataForMl(listingId));
     }
 
     //TODO ML gets all listings data for training (features + historical data + labels)
-    @GetMapping("/dataset/listings")
+//    @GetMapping("/dataset/listings")
     public ResponseEntity<List<MlListingDataResponse>> getListingsDataset() {
         return ResponseEntity.ok(mlIntegrationService.getAllListingsDataset());
     }
 
     //TODO ML sends risk analysis results for a listing (listingId + riskScore + riskFactors)
-    @PostMapping("/results")
+//    @PostMapping("/results")
     public ResponseEntity<Void> receiveRiskResult(@RequestBody MlRiskResultRequest request) {
         mlIntegrationService.processRiskResult(request);
         return ResponseEntity.ok().build();
