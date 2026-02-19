@@ -62,6 +62,11 @@ def deployApp(Map config) {
          envLines << "SPRINGDOC_API_DOCS_ENABLED=true"
          envLines << "SERVER_FORWARD_HEADERS_STRATEGY=framework"
 
+         // NEW: Fix for "Unable to render this definition" error
+         envLines << "SPRINGDOC_CONFIG_PATH=/v3/api-docs"
+         envLines << "SPRINGDOC_SWAGGER-UI_CONFIG-URL=/v3/api-docs/swagger-config"
+         envLines << "SPRINGDOC_SWAGGER-UI_URL=/v3/api-docs"
+
          def envContent = envLines.join('\n')
 
          echo "Cleaning environment and deploying to ${VM_HOST}..."
@@ -77,7 +82,6 @@ def deployApp(Map config) {
                 sudo docker network create horse-net 2>/dev/null || true &&
 
                 # --- FORCED CLEANUP START ---
-                # Remove containers if they exist to prevent "name in use" conflicts
                 sudo docker rm -f horsetrust-backend-database-1 horsetrust-backend-spring-1 2>/dev/null || true
                 # -----------------------------
 
