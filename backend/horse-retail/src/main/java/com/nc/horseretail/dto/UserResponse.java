@@ -1,7 +1,7 @@
 package com.nc.horseretail.dto;
 
 import com.nc.horseretail.model.user.Role;
-import jakarta.persistence.*;
+import com.nc.horseretail.model.user.UserStatus;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -24,11 +24,7 @@ public class UserResponse {
 
     private Role role;
 
-    private boolean emailVerified;
-
-    private boolean accountEnabled;
-
-    private Instant createdAt;
+    private UserStatus status;
 
     private Instant lastLoginAt;
 

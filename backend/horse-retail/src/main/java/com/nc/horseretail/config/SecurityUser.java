@@ -1,6 +1,7 @@
 package com.nc.horseretail.config;
 
 import com.nc.horseretail.model.user.User;
+import com.nc.horseretail.model.user.UserStatus;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -41,17 +42,17 @@ public class SecurityUser implements UserDetails {
     }
 
     @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    @Override
     public boolean isCredentialsNonExpired() {
         return true;
     }
 
     @Override
     public boolean isEnabled() {
-        return user.isAccountEnabled();
+        return user.getStatus() == UserStatus.ACTIVE;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return user.getStatus() != UserStatus.BLOCKED;
     }
 }
