@@ -40,7 +40,50 @@ def deployApp(Map config) {
          def pgPort = '5432'
          def pgDb   = 'horse_db'
 
-         def envVars = "BACKEND_IMAGE='${fullBackendImage}' COMPOSE_PROJECT_NAME='horsetrust-backend' POSTGRES_HOST='${pgHost}' POSTGRES_PORT='${pgPort}' POSTGRES_DB='${pgDb}' POSTGRES_DOCKER_DB='${pgDb}' POSTGRES_USER='${POSTGRES_USER}' POSTGRES_PASSWORD='${POSTGRES_PASSWORD}' POSTGRES_DOCKER_URL='${POSTGRES_DOCKER_URL}' POSTGRES_URL='${POSTGRES_DOCKER_URL}' SPRING_PROFILE='prod' SECRET_KEY='${SECRET_KEY}'"
+         def hasBadChars = { v ->
+            if (v == null) return true
+            if (v.contains('\r')) return true
+            if (v.trim().length() == 0) return true
+            if ((v.startsWith("'") && v.endsWith("'")) || (v.startsWith('"') && v.endsWith('"'))) return true
+            return false
+         }
+
+         def stripQuotesAndCR = { v ->
+            if (v == null) return ''
+            def s = v.replaceAll('\r', '')
+            if ((s.startsWith("'") && s.endsWith("'")) || (s.startsWith('"') && s.endsWith('"'))) {
+                s = s.substring(1, s.length()-1)
+            }
+            return s
+         }
+
+         def cleanedPostgresUrl = stripQuotesAndCR(POSTGRES_DOCKER_URL)
+         def cleanedPostgresUser = stripQuotesAndCR(POSTGRES_USER)
+         def cleanedPostgresPass = stripQuotesAndCR(POSTGRES_PASSWORD)
+         def cleanedSecretKey = stripQuotesAndCR(SECRET_KEY)
+
+         def problems = []
+         if (hasBadChars(cleanedPostgresUrl)) { problems << 'POSTGRES_DOCKER_URL (empty or contains CR/quotes)'}
+         if (hasBadChars(cleanedPostgresUser)) { problems << 'POSTGRES_USER (empty or contains CR/quotes)'}
+         if (hasBadChars(cleanedPostgresPass)) { problems << 'POSTGRES_PASSWORD (empty or contains CR/quotes)'}
+         if (hasBadChars(cleanedSecretKey)) { problems << 'SECRET_KEY (empty or contains CR/quotes)'}
+         if (problems) { error("Invalid environment values detected before deploy: ${problems.join(', ')}") }
+
+         def envLines = []
+         envLines << "BACKEND_IMAGE=${fullBackendImage}"
+         envLines << "COMPOSE_PROJECT_NAME=horsetrust-backend"
+         envLines << "POSTGRES_HOST=${pgHost}"
+         envLines << "POSTGRES_PORT=${pgPort}"
+         envLines << "POSTGRES_DB=${pgDb}"
+         envLines << "POSTGRES_DOCKER_DB=${pgDb}"
+         envLines << "POSTGRES_USER=${cleanedPostgresUser}"
+         envLines << "POSTGRES_PASSWORD=${cleanedPostgresPass}"
+         envLines << "POSTGRES_DOCKER_URL=${cleanedPostgresUrl}"
+         envLines << "POSTGRES_URL=${cleanedPostgresUrl}"
+         envLines << "SPRING_PROFILE=prod"
+         envLines << "SECRET_KEY=${cleanedSecretKey}"
+
+         def envContent = envLines.join('\n')
 
          echo "Deploying image: ${fullBackendImage} to VM host credential id: ${vmHostCredId}"
 
@@ -48,22 +91,13 @@ def deployApp(Map config) {
 
          sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no backend/horse-retail/infrastructure/docker/${composeFile} ${VM_USER}@${VM_HOST}:${VM_PROJECT_PATH}/docker-compose.yml"
 
-         sh """
-             ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} "
-                 set -e
-                 cd ${VM_PROJECT_PATH}
+         writeFile file: 'remote.env', text: envContent
 
-                 sudo docker network create horse-net 2>/dev/null || true
+         sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no remote.env ${VM_USER}@${VM_HOST}:${VM_PROJECT_PATH}/.env"
 
-                 echo '${DOCKERHUB_PASS}' | sudo docker login -u '${DOCKERHUB_USER}' --password-stdin
+         sh "ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} 'cd ${VM_PROJECT_PATH} && sudo docker network create horse-net 2>/dev/null || true && echo Logging into Docker Hub && echo ${DOCKERHUB_PASS} | sudo docker login -u ${DOCKERHUB_USER} --password-stdin && sudo docker compose --env-file .env pull && sudo docker compose --env-file .env up -d --force-recreate && sudo docker image prune -f && sudo docker logout'"
 
-                 sudo env ${envVars} docker compose pull
-                 sudo env ${envVars} docker compose up -d --force-recreate
-
-                 sudo docker image prune -f
-                 sudo docker logout
-             "
-         """
+         sh 'rm -f remote.env'
      }
 }
 
