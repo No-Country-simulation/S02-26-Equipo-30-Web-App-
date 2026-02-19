@@ -122,9 +122,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserResponse getUserPublicProfile(UUID userId) {
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("User not found with id: " + userId));
+        User user = findUserOrThrow(userId);
 
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new ResourceNotFoundException("User not found with id: " + userId);
@@ -158,6 +156,25 @@ public class UserServiceImpl implements UserService {
 
         return horseRepository.findByOwner(user, pageable)
                 .map(userMapper::toHorseDto);
+    }
+
+
+    @Override
+    public void banUser(UUID userId) {
+//TODO implement method
+        throw new BusinessException("Method not implemented yet");
+    }
+
+    @Override
+    public void unbanUser(UUID userId) {
+//TODO implement method
+        throw new BusinessException("Method not implemented yet");
+    }
+
+    @Override
+    public UserResponse getUserById(UUID userId) {
+            User user = findUserOrThrow(userId);
+        return userMapper.toDto(user);
     }
 
     // ============================

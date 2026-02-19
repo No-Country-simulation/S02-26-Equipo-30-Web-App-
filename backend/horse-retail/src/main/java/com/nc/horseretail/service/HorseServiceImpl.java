@@ -119,6 +119,14 @@ public class HorseServiceImpl implements HorseService {
         return horseRepository.count();
     }
 
+
+    @Override
+    public void deleteHorseByAdmin(UUID horseId) {
+//TODO implement method
+        throw new BusinessException("Method not implemented yet");
+    }
+
+
     // ============================
     // HELPER METHODS
     // ============================

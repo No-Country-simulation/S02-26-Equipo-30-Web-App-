@@ -32,4 +32,10 @@ public interface UserService {
     void deleteUser(UUID userId);
 
     Page<HorseResponse> getUserHorses(UUID userId, Pageable pageable);
+
+    void banUser(UUID userId);
+
+    void unbanUser(UUID userId);
+
+    UserResponse getUserById(UUID userId);
 }
