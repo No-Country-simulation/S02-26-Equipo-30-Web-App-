@@ -1,7 +1,7 @@
 def deployApp(Map config) {
     def composeFile = config.composeFile ?: 'docker-compose.yml'
 
-    // Mapping variables to IDs
+    // 1. Map Variables from Parameters
     def sshCredId = config.sshKeyCredentialId
     def vmHostCredId = config.vmHostCredentialId
     def dbNameCredId = config.dbUserCredentialId    // Holds 'HorseTrustDb1'
@@ -10,7 +10,7 @@ def deployApp(Map config) {
     def secretKeyCredId = config.secretKeyCredentialId
     def dockerCredId = config.dockerCredentialId
 
-    // Validation
+    // 2. Validation
     def missing = []
     if (!sshCredId) missing << 'sshKeyCredentialId'
     if (!vmHostCredId) missing << 'vmHostCredentialId'
@@ -32,10 +32,10 @@ def deployApp(Map config) {
     ]
 
     withCredentials(creds) {
-         def deployImage = "edydockers/backend-horsetrust"
          def imageTag = config.imageTag
-         def fullBackendImage = "${deployImage}:${imageTag}"
+         def fullBackendImage = "edydockers/backend-horsetrust:${imageTag}"
 
+         // Helper to clean quotes or hidden characters
          def clean = { v ->
             if (v == null) return ''
             def s = v.replaceAll('\r', '').trim()
@@ -46,49 +46,58 @@ def deployApp(Map config) {
          }
 
          def cleanedDbName = clean(RAW_DB_NAME)
-         def cleanedDbPass = clean(POSTGRES_PASSWORD)
-         def cleanedDbUrl = clean(POSTGRES_DOCKER_URL)
-         def cleanedSecretKey = clean(SECRET_KEY)
 
+         // 3. Build .env file with Swagger & Proxy Fixes
          def envLines = []
          envLines << "BACKEND_IMAGE=${fullBackendImage}"
          envLines << "POSTGRES_DB=${cleanedDbName}"
-         envLines << "POSTGRES_PASSWORD=${cleanedDbPass}"
-         envLines << "SPRING_DATASOURCE_URL=${cleanedDbUrl}"
-         envLines << "SECRET_KEY=${cleanedSecretKey}"
+         envLines << "POSTGRES_PASSWORD=${clean(POSTGRES_PASSWORD)}"
+         envLines << "SPRING_DATASOURCE_URL=${clean(POSTGRES_DOCKER_URL)}"
+         envLines << "SECRET_KEY=${clean(SECRET_KEY)}"
 
-         // Force Swagger UI & Proxy support on in Prod
+         // Swagger UI Production Visibility
          envLines << "SPRINGDOC_SWAGGER_UI_ENABLED=true"
          envLines << "SPRINGDOC_API_DOCS_ENABLED=true"
+
+         // Nginx Reverse Proxy Headers Strategy
          envLines << "SERVER_FORWARD_HEADERS_STRATEGY=framework"
 
-         // NEW: Fix for "Unable to render this definition" error
+         // Swagger JSON Path Fixes
          envLines << "SPRINGDOC_CONFIG_PATH=/v3/api-docs"
          envLines << "SPRINGDOC_SWAGGER-UI_CONFIG-URL=/v3/api-docs/swagger-config"
          envLines << "SPRINGDOC_SWAGGER-UI_URL=/v3/api-docs"
 
-         def envContent = envLines.join('\n')
-
-         echo "Cleaning environment and deploying to ${VM_HOST}..."
-
+         // 4. File Transfers
+         writeFile file: 'remote.env', text: envLines.join('\n')
          sh "ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} 'mkdir -p ${VM_PROJECT_PATH}'"
          sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no backend/horse-retail/infrastructure/docker/${composeFile} ${VM_USER}@${VM_HOST}:${VM_PROJECT_PATH}/docker-compose.yml"
-         writeFile file: 'remote.env', text: envContent
          sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no remote.env ${VM_USER}@${VM_HOST}:${VM_PROJECT_PATH}/.env"
 
+         // 5. Remote Execution: Kill, Start DB, Force Create DB, Start App
          sh """
             ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} '
                 cd ${VM_PROJECT_PATH} &&
                 sudo docker network create horse-net 2>/dev/null || true &&
 
-                # --- FORCED CLEANUP START ---
+                # Forced cleanup of ghost containers
                 sudo docker rm -f horsetrust-backend-database-1 horsetrust-backend-spring-1 2>/dev/null || true
-                # -----------------------------
 
+                # Pull and start database only
                 echo ${DPASS} | sudo docker login -u ${DUSER} --password-stdin &&
-                sudo docker compose pull &&
-                sudo docker compose down -v &&
-                sudo docker compose up -d --force-recreate &&
+                sudo docker compose up -d database
+
+                # Wait for DB birth and manually create the database room
+                echo "Waiting for database to initialize..."
+                sleep 12
+                sudo docker exec horsetrust-backend-database-1 psql -U postgres -c "CREATE DATABASE \\"${cleanedDbName}\\";" || true
+
+                # Start the Spring Application
+                sudo docker compose up -d spring
+
+                # Final restart to ensure connection link is fresh
+                sleep 5
+                sudo docker restart horsetrust-backend-spring-1
+
                 sudo docker logout'
          """
          sh 'rm -f remote.env'
@@ -97,15 +106,21 @@ def deployApp(Map config) {
 
 pipeline {
     agent { label "worker-node-02" }
-    tools { jdk 'jdk21'; maven 'maven3' }
-    environment {
-        VM_USER = 'jenkins'
-        VM_PROJECT_PATH = '/home/jenkins/horsetrust'
-        IMAGE_NAME = "local/horsetrust"
-        DOCKERHUB_CREDENTIALS = 'edydockers-credentials'
-        APP_DIR = 'backend/horse-retail'
-        DOCKER_DIR = 'backend/horse-retail/infrastructure/docker'
+
+    tools {
+        jdk 'jdk21'
+        maven 'maven3'
     }
+
+    environment {
+        VM_USER                    = 'jenkins'
+        VM_PROJECT_PATH            = '/home/jenkins/horsetrust'
+        IMAGE_NAME                 = "local/horsetrust"
+        DOCKERHUB_CREDENTIALS      = 'edydockers-credentials'
+        APP_DIR                    = 'backend/horse-retail'
+        DOCKER_DIR                 = 'backend/horse-retail/infrastructure/docker'
+    }
+
     stages {
         stage('Checkout Source Code') {
             steps {
@@ -113,36 +128,51 @@ pipeline {
                 checkout scm
             }
         }
-        stage('Build') { steps { sh "mvn -f ${APP_DIR}/pom.xml clean install -DskipTests" } }
-        stage('Docker Build/Push') {
-            steps { script {
-                def imageToPush = "edydockers/backend-horsetrust"
-                def imageTag = "prod-${env.BUILD_NUMBER}"
-                sh "docker build -t ${IMAGE_NAME} -f ${DOCKER_DIR}/Dockerfile ${APP_DIR}"
-                withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CREDENTIALS, usernameVariable: 'DUSER', passwordVariable: 'DPASS')]) {
-                    sh "echo '${DPASS}' | docker login -u '${DUSER}' --password-stdin"
-                    sh "docker tag ${IMAGE_NAME} ${imageToPush}:${imageTag}"
-                    sh "docker tag ${IMAGE_NAME} ${imageToPush}:latest"
-                    sh "docker push ${imageToPush}:${imageTag}"
-                    sh "docker push ${imageToPush}:latest"
+
+        stage('Build Application') {
+            steps {
+                sh "mvn -f ${APP_DIR}/pom.xml clean install -DskipTests"
+            }
+        }
+
+        stage('Build and Push Image') {
+            steps {
+                script {
+                    def imageToPush = "edydockers/backend-horsetrust"
+                    def imageTag = "prod-${env.BUILD_NUMBER}"
+
+                    sh "docker build -t ${IMAGE_NAME} -f ${DOCKER_DIR}/Dockerfile ${APP_DIR}"
+
+                    withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CREDENTIALS, usernameVariable: 'DUSER', passwordVariable: 'DPASS')]) {
+                        sh "echo '${DPASS}' | docker login -u '${DUSER}' --password-stdin"
+                        sh "docker tag ${IMAGE_NAME} ${imageToPush}:${imageTag}"
+                        sh "docker tag ${IMAGE_NAME} ${imageToPush}:latest"
+                        sh "docker push ${imageToPush}:${imageTag}"
+                        sh "docker push ${imageToPush}:latest"
+                        sh "docker logout"
+                    }
                 }
-            } }
+            }
         }
-        stage('Deploy') {
-            steps { script {
-                deployApp(
-                    vmHostCredentialId: 'vm-ip-98',
-                    imageTag: "prod-${env.BUILD_NUMBER}",
-                    sshKeyCredentialId: 'vm-ssh-key-98',
-                    dbUserCredentialId: 'horsetrust-db-name',
-                    dbPasswordCredentialId: 'horsetrust-db-pass',
-                    dbUrlCredentialId: 'horsetrust-db-url',
-                    secretKeyCredentialId: 'horsetrust-secret-key',
-                    dockerCredentialId: env.DOCKERHUB_CREDENTIALS
-                )
-            } }
-        }
+
+        stage('Deploy to Production') {
+            steps {
+                script {
+                    deployApp(
+                        vmHostCredentialId: 'vm-ip-98',
+                        imageTag: "prod-${env.BUILD_NUMBER}",
+                        sshKeyCredentialId: 'vm-ssh-key-98',
+                        dbUserCredentialId: 'horsetrust-db-name',
+                        dbPasswordCredentialId: 'horsetrust-db-pass',
+                        dbUrlCredentialId: 'horsetrust-db-url',
+                        secretKeyCredentialId: 'horsetrust-secret-key',
+                        dockerCredentialId: env.DOCKERHUB_CREDENTIALS
+                    )
+                 }
+             }
+         }
     }
+
     post {
         always {
             sh "docker rmi ${IMAGE_NAME} || true"
