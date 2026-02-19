@@ -5,7 +5,6 @@ services:
     image: postgres:16
     container_name: horsetrust-backend-database-1
     environment:
-      # These match the variables generated in the Jenkins 'deployApp' function
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
@@ -28,13 +27,15 @@ services:
       database:
         condition: service_healthy
     environment:
-      # Spring Boot 3 automatically maps these to the DataSource
       SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
 
-      # Application specific secrets
+      # Explicitly Enabling Swagger in Prod Profile
+      SPRINGDOC_SWAGGER-UI_ENABLED: "true"
+      SPRINGDOC_API-DOCS_ENABLED: "true"
+
       SECRET_KEY: ${SECRET_KEY}
       SERVER_PORT: 8090
     ports:
