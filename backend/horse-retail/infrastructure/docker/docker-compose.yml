@@ -1,39 +1,47 @@
+version: '3.8'
+
 services:
   database:
     image: postgres:16
+    container_name: horsetrust-backend-database-1
     environment:
-      POSTGRES_USER: ${POSTGRES_DOCKER_USER:-${POSTGRES_USER:-postgres}}
-      POSTGRES_PASSWORD: ${POSTGRES_DOCKER_PASSWORD:-${POSTGRES_PASSWORD:-MyPassword123!}}
-      POSTGRES_DB: ${POSTGRES_DOCKER_DB:-${POSTGRES_DB:-horse-trust}}
+      # These match the variables generated in the Jenkins 'deployApp' function
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5433:5432"
     networks:
       - horse-net
     volumes:
       - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   spring:
     image: ${BACKEND_IMAGE}
+    container_name: horsetrust-backend-spring-1
     depends_on:
-      - database
+      database:
+        condition: service_healthy
     environment:
-      POSTGRES_HOST: ${POSTGRES_HOST:-database}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      POSTGRES_DB: ${POSTGRES_DOCKER_DB:-${POSTGRES_DB:-horse-trust}}
-      POSTGRES_USER: ${POSTGRES_DOCKER_USER:-${POSTGRES_USER:-postgres}}
-      POSTGRES_PASSWORD: ${POSTGRES_DOCKER_PASSWORD:-${POSTGRES_PASSWORD:-MyPassword123!}}
-      POSTGRES_DOCKER_URL: ${POSTGRES_DOCKER_URL:-jdbc:postgresql://${POSTGRES_HOST:-database}:${POSTGRES_PORT:-5432}/${POSTGRES_DOCKER_DB:-${POSTGRES_DB:-horse-trust}}}
-      POSTGRES_URL: ${POSTGRES_URL:-${POSTGRES_DOCKER_URL:-jdbc:postgresql://${POSTGRES_HOST:-database}:${POSTGRES_PORT:-5432}/${POSTGRES_DOCKER_DB:-${POSTGRES_DB:-horse-trust}}}}
-      SPRING_PROFILE: ${SPRING_PROFILE:-prod}
-      SECRET_KEY: ${SECRET_KEY:-}
-      PORT: ${PORT:-8090}
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-${POSTGRES_DOCKER_URL:-jdbc:postgresql://${POSTGRES_HOST:-database}:${POSTGRES_PORT:-5432}/${POSTGRES_DOCKER_DB:-${POSTGRES_DB:-horse-trust}}}}
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-${POSTGRES_DOCKER_USER:-${POSTGRES_USER:-postgres}}}
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-${POSTGRES_DOCKER_PASSWORD:-${POSTGRES_PASSWORD:-MyPassword123!}}}
+      # Spring Boot 3 automatically maps these to the DataSource
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+
+      # Application specific secrets
+      SECRET_KEY: ${SECRET_KEY}
+      SERVER_PORT: 8090
     ports:
       - "8070:8090"
     networks:
       - horse-net
+    restart: always
 
 volumes:
   db_data:
