@@ -32,11 +32,18 @@ public class SecurityConfig {
                         "/swagger-ui/**", "/swagger-ui.html",
                         "/api/v1/public", "/api/v1/metrics/sellers/count", 
                         "/api/v1/metrics/satisfaction")
-
                         .permitAll()
+                        .requestMatchers("/api/v1/metrics/sellers/**").permitAll()
+                        .requestMatchers("/api/v1/metrics/satisfaction").permitAll()
+                        .requestMatchers("/api/v1/metrics/horses/**").permitAll()
+                        .requestMatchers("/api/v1/metrics/listings/count").permitAll()
+                        .requestMatchers("/api/v1/metrics/breeds/**").permitAll()
+                        .requestMatchers("/api/v1/metrics/countries/**").permitAll()
                         .requestMatchers("/internal/ml/**").hasRole("ML_SERVICE")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/metrics/feedback").authenticated()
+                        .requestMatchers("/api/v1/chat/**").authenticated()
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
         )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
