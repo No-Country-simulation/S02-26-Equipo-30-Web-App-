@@ -52,7 +52,6 @@ def deployApp(Map config) {
          def cleanedSecretKey = clean(SECRET_KEY)
 
          // Build the .env file content
-         // Note: We use cleanedDbName for both USER and DB to match standard Postgres Docker behavior
          def envLines = []
          envLines << "BACKEND_IMAGE=${fullBackendImage}"
          envLines << "COMPOSE_PROJECT_NAME=horsetrust-backend"
@@ -80,7 +79,6 @@ def deployApp(Map config) {
          sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no remote.env ${VM_USER}@${VM_HOST}:${VM_PROJECT_PATH}/.env"
 
          // 4. Remote execution
-         // WE ADD 'docker compose down -v' to ensure the database is recreated with the NEW name
          sh """
             ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} '
                 cd ${VM_PROJECT_PATH} &&
@@ -155,10 +153,11 @@ pipeline {
                         vmHostCredentialId: 'vm-ip-98',
                         imageTag: "prod-${env.BUILD_NUMBER}",
                         sshKeyCredentialId: 'vm-ssh-key-98',
-                        dbUserCredentialId: 'horsetrust-db-name',   // Injects 'HorseTrustDb1'
+                        dbUserCredentialId: 'horsetrust-db-name',
                         dbPasswordCredentialId: 'horsetrust-db-pass',
-                        dbUrlCredentialId: 'horsetrust-db-url',     // Ensure this ends in /HorseTrustDb1
-                        secretKeyCredentialId: 'horsetrust-secret-key'
+                        dbUrlCredentialId: 'horsetrust-db-url',
+                        secretKeyCredentialId: 'horsetrust-secret-key',
+                        dockerCredentialId: env.DOCKERHUB_CREDENTIALS // FIXED: Added this parameter
                     )
                  }
              }
