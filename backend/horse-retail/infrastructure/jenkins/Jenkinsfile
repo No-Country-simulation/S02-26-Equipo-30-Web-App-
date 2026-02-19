@@ -1,16 +1,16 @@
 def deployApp(Map config) {
     def composeFile = config.composeFile ?: 'docker-compose.yml'
 
-    // 1. Map Variables from Parameters
+    // 1. Correctly map the Credential IDs passed from the stage
     def sshCredId = config.sshKeyCredentialId
     def vmHostCredId = config.vmHostCredentialId
-    def dbNameCredId = config.dbUserCredentialId    // Holds 'HorseTrustDb1'
+    def dbNameCredId = config.dbUserCredentialId
     def dbPassCredId = config.dbPasswordCredentialId
     def dbUrlCredId = config.dbUrlCredentialId
     def secretKeyCredId = config.secretKeyCredentialId
     def dockerCredId = config.dockerCredentialId
 
-    // 2. Validation
+    // 2. Validate all IDs are present before continuing
     def missing = []
     if (!sshCredId) missing << 'sshKeyCredentialId'
     if (!vmHostCredId) missing << 'vmHostCredentialId'
@@ -35,7 +35,7 @@ def deployApp(Map config) {
          def imageTag = config.imageTag
          def fullBackendImage = "edydockers/backend-horsetrust:${imageTag}"
 
-         // Helper to clean quotes or hidden characters
+         // Helper to clean invisible characters (CRLF) and extra quotes
          def clean = { v ->
             if (v == null) return ''
             def s = v.replaceAll('\r', '').trim()
@@ -45,56 +45,55 @@ def deployApp(Map config) {
             return s
          }
 
-         def cleanedDbName = clean(RAW_DB_NAME)
+         // Using the literal name you confirmed exists in the container
+         def dbToUse = "horsetrust-db-name"
 
-         // 3. Build .env file with Swagger & Proxy Fixes
+         // 3. Build the .env file with Proxy and Swagger visibility fixes
          def envLines = []
          envLines << "BACKEND_IMAGE=${fullBackendImage}"
-         envLines << "POSTGRES_DB=${cleanedDbName}"
+         envLines << "POSTGRES_DB=${dbToUse}"
          envLines << "POSTGRES_PASSWORD=${clean(POSTGRES_PASSWORD)}"
          envLines << "SPRING_DATASOURCE_URL=${clean(POSTGRES_DOCKER_URL)}"
          envLines << "SECRET_KEY=${clean(SECRET_KEY)}"
 
-         // Swagger UI Production Visibility
+         // Fixes for Swagger UI behind Nginx Proxy
          envLines << "SPRINGDOC_SWAGGER_UI_ENABLED=true"
          envLines << "SPRINGDOC_API_DOCS_ENABLED=true"
-
-         // Nginx Reverse Proxy Headers Strategy
          envLines << "SERVER_FORWARD_HEADERS_STRATEGY=framework"
-
-         // Swagger JSON Path Fixes
          envLines << "SPRINGDOC_CONFIG_PATH=/v3/api-docs"
          envLines << "SPRINGDOC_SWAGGER-UI_CONFIG-URL=/v3/api-docs/swagger-config"
-         envLines << "SPRINGDOC_SWAGGER-UI_URL=/v3/api-docs"
+         envLines << "SPRINGDOC_SWAGGER_UI_URL=/v3/api-docs"
 
-         // 4. File Transfers
-         writeFile file: 'remote.env', text: envLines.join('\n')
+         echo "Deploying to ${VM_HOST}. Database targeted: ${dbToUse}"
+
+         // 4. Transfer files
          sh "ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} 'mkdir -p ${VM_PROJECT_PATH}'"
          sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no backend/horse-retail/infrastructure/docker/${composeFile} ${VM_USER}@${VM_HOST}:${VM_PROJECT_PATH}/docker-compose.yml"
+         writeFile file: 'remote.env', text: envLines.join('\n')
          sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no remote.env ${VM_USER}@${VM_HOST}:${VM_PROJECT_PATH}/.env"
 
-         // 5. Remote Execution: Kill, Start DB, Force Create DB, Start App
+         // 5. Remote Execution: Forced cleanup and forced DB creation
          sh """
             ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} '
                 cd ${VM_PROJECT_PATH} &&
                 sudo docker network create horse-net 2>/dev/null || true &&
 
-                # Forced cleanup of ghost containers
+                # Kill any ghost containers to prevent "Conflict" errors
                 sudo docker rm -f horsetrust-backend-database-1 horsetrust-backend-spring-1 2>/dev/null || true
 
-                # Pull and start database only
-                echo ${DPASS} | sudo docker login -u ${DUSER} --password-stdin &&
+                # Pull and start database container
+                echo "${DPASS}" | sudo docker login -u "${DUSER}" --password-stdin &&
                 sudo docker compose up -d database
 
-                # Wait for DB birth and manually create the database room
-                echo "Waiting for database to initialize..."
+                # Force create the database room just in case
+                echo "Ensuring database exists..."
                 sleep 12
-                sudo docker exec horsetrust-backend-database-1 psql -U postgres -c "CREATE DATABASE \\"${cleanedDbName}\\";" || true
+                sudo docker exec horsetrust-backend-database-1 psql -U postgres -c "CREATE DATABASE \\"${dbToUse}\\";" || true
 
-                # Start the Spring Application
+                # Start the Spring application
                 sudo docker compose up -d spring
 
-                # Final restart to ensure connection link is fresh
+                # Final restart to ensure clean database handshake
                 sleep 5
                 sudo docker restart horsetrust-backend-spring-1
 
@@ -106,11 +105,7 @@ def deployApp(Map config) {
 
 pipeline {
     agent { label "worker-node-02" }
-
-    tools {
-        jdk 'jdk21'
-        maven 'maven3'
-    }
+    tools { jdk 'jdk21'; maven 'maven3' }
 
     environment {
         VM_USER                    = 'jenkins'
@@ -140,9 +135,7 @@ pipeline {
                 script {
                     def imageToPush = "edydockers/backend-horsetrust"
                     def imageTag = "prod-${env.BUILD_NUMBER}"
-
                     sh "docker build -t ${IMAGE_NAME} -f ${DOCKER_DIR}/Dockerfile ${APP_DIR}"
-
                     withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CREDENTIALS, usernameVariable: 'DUSER', passwordVariable: 'DPASS')]) {
                         sh "echo '${DPASS}' | docker login -u '${DUSER}' --password-stdin"
                         sh "docker tag ${IMAGE_NAME} ${imageToPush}:${imageTag}"
