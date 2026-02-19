@@ -27,4 +27,6 @@ public interface HorseService {
     Long countMyHorses(User domainUser);
 
     Page<HorseResponse> getHorses(String keyword, Pageable pageable);
+
+    void deleteHorseByAdmin(UUID horseId);
 }

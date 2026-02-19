@@ -6,22 +6,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
-import java.math.BigDecimal;
-import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface MetricsRepository {
+public interface FeedbackRepository extends JpaRepository<Feedback, UUID> {
 
-    List<Object[]> getTopBreedsRaw();
+    @Query("SELECT COALESCE(AVG(f.rating), 0.0) FROM Feedback f")
+    Double getAverageRating();
 
-    List<Object[]> getTopCountriesRaw();
-
-    Long countUsers();
-
-    Long countConversations();
-
-    Long countSoldListings();
-
-    List<Object[]> getMonthlyGrowthRaw();
+    boolean existsByUser(User user);
 }
