@@ -24,25 +24,22 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http.csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-<<<<<<< HEAD
-                .authorizeHttpRequests(auth -> auth
-                    .requestMatchers(
-                        "/api/v1/auth/**", 
-                        "/v3/api-docs/**",
-                        "/swagger-ui/**", 
-                        "/swagger-ui.html",
-                        "/api/v1/public", 
-                        "/api/v1/metrics/sellers/count", 
-                        "/api/v1/metrics/satisfaction"
-                    ).permitAll()
-                    .requestMatchers("/internal/ml/**").hasRole("ML_SERVICE")
-                    .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                    .requestMatchers("/api/v1/metrics/feedback").authenticated()
-                    .anyRequest().authenticated()
+    .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+    .authorizeHttpRequests(auth -> {
+        auth.requestMatchers(
+            "/api/v1/auth/**", "/v3/api-docs/**",
+            "/swagger-ui/**", "/swagger-ui.html",
+            "/api/v1/public", "/api/v1/metrics/sellers/count", 
+            "/api/v1/metrics/satisfaction"
+        ).permitAll();
 
-        )
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+        auth.requestMatchers("/internal/ml/**").hasRole("ML_SERVICE");
+        auth.requestMatchers("/api/admin/**").hasRole("ADMIN");
+        auth.requestMatchers("/api/v1/metrics/feedback").authenticated();
+        auth.anyRequest().authenticated();
+    })
+    .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+
 
         return http.build();
     }

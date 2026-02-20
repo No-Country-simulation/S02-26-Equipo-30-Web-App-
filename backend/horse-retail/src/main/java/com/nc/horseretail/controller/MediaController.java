@@ -6,6 +6,7 @@ import com.nc.horseretail.service.MediaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -17,11 +18,26 @@ public class MediaController {
 
     private final MediaService mediaService;
 
-    @PostMapping
-    public ResponseEntity<MediaResponse> uploadMedia(
-            @RequestBody MediaUploadRequest request) {
-        return ResponseEntity.ok(mediaService.uploadMedia(request));
-    }
+    @PostMapping(consumes = "multipart/form-data")
+public ResponseEntity<MediaResponse> uploadMedia(
+        @RequestParam("file") MultipartFile file,
+        @RequestParam("horseId") UUID horseId,
+        @RequestParam("mediaType") String mediaType,
+        @RequestParam("captureDate") String captureDate,
+        @RequestParam("context") String context,
+        @RequestParam("unedited") boolean unedited
+) {
+    return ResponseEntity.ok(
+            mediaService.uploadMedia(
+                    file,
+                    horseId,
+                    mediaType,
+                    captureDate,
+                    context,
+                    unedited
+            )
+    );
+}
 
     @GetMapping("/horse/{horseId}")
     public ResponseEntity<List<MediaResponse>> getMediaByHorse(

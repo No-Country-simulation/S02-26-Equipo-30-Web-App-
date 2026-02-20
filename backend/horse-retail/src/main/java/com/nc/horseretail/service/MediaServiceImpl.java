@@ -9,6 +9,9 @@ import com.nc.horseretail.repository.MediaAssetRepository;
 import com.nc.horseretail.repository.HorseRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import java.time.LocalDate;
+import com.nc.horseretail.model.media.MediaType;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -20,26 +23,36 @@ public class MediaServiceImpl implements MediaService {
 
     private final MediaAssetRepository mediaAssetRepository;
     private final HorseRepository horseRepository;
+    private final CloudinaryService cloudinaryService;
     
     @Override
-    public MediaResponse uploadMedia(MediaUploadRequest request) {
-        
-        Horse horse = horseRepository.findById(request.getHorseId())
-                .orElseThrow(() -> new RuntimeException("Horse not found"));
-        
-        MediaAsset media = MediaAsset.builder()
-                .horse(horse)
-                .url(request.getUrl())
-                .mediaType(request.getMediaType())
-                .captureDate(request.getCaptureDate())
-                .context(request.getContext())
-                .unedited(request.isUnedited())
-                .build();
-        
-        MediaAsset saved = mediaAssetRepository.save(media);
+    public MediaResponse uploadMedia(
+        MultipartFile file,
+        UUID horseId,
+        String mediaType,
+        String captureDate,
+        String context,
+        boolean unedited
+) {
 
-        return mapToResponse(saved);
-    }
+    Horse horse = horseRepository.findById(horseId)
+            .orElseThrow(() -> new RuntimeException("Horse not found"));
+
+    String fileUrl = cloudinaryService.uploadFile(file);
+
+    MediaAsset media = MediaAsset.builder()
+            .horse(horse)
+            .url(fileUrl)
+            .mediaType(Enum.valueOf(MediaType.class, mediaType))
+            .captureDate(LocalDate.parse(captureDate))
+            .context(context)
+            .unedited(unedited)
+            .build();
+
+    MediaAsset saved = mediaAssetRepository.save(media);
+
+    return mapToResponse(saved);
+}
     
     @Override
     public List<MediaResponse> getMediaByHorse(UUID horseId) {
