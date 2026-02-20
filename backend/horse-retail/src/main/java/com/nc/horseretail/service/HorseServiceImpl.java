@@ -6,6 +6,7 @@ import com.nc.horseretail.exception.BusinessException;
 import com.nc.horseretail.exception.ResourceNotFoundException;
 import com.nc.horseretail.mapper.HorseMapper;
 import com.nc.horseretail.model.horse.Horse;
+import com.nc.horseretail.model.horse.MainUse;
 import com.nc.horseretail.model.user.User;
 import com.nc.horseretail.repository.HorseRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class HorseServiceImpl implements HorseService {
 
     private final HorseRepository horseRepository;
     private final HorseMapper horseMapper;
+    private final ArithmeticTrustScoreService arithmeticTrustScoreService;
 
     // ============================
     // CREATE HORSE
@@ -35,7 +37,10 @@ public class HorseServiceImpl implements HorseService {
 
         Horse horse = horseMapper.toEntity(request);
         horse.setOwner(owner);
-
+        if (horse.getSellerVerified() == null) {
+            horse.setSellerVerified(owner.isEmailVerified());
+        }
+        arithmeticTrustScoreService.applyTrustScore(horse);
         horseRepository.save(horse);
     }
 
@@ -43,17 +48,12 @@ public class HorseServiceImpl implements HorseService {
     // GET / SEARCH HORSES (PAGINATED)
     // ============================
     @Override
-    public Page<HorseResponse> getHorses(String keyword, Pageable pageable) {
-
-        Page<Horse> horsePage;
-
-        if (keyword == null || keyword.isBlank()) {
-            horsePage = horseRepository.findAll(pageable);
-        } else {
-            horsePage = horseRepository.search(keyword.trim(), pageable);
+    public Page<HorseResponse> getHorses(String keyword, MainUse mainUse, Pageable pageable) {
+        String sanitizedKeyword = keyword == null ? "" : keyword.trim();
+        if (sanitizedKeyword.isBlank()) {
+            sanitizedKeyword = "";
         }
-
-        return horsePage.map(horseMapper::toDto);
+        return horseRepository.search(sanitizedKeyword, mainUse, pageable).map(horseMapper::toDto);
     }
 
     // ============================
@@ -77,6 +77,7 @@ public class HorseServiceImpl implements HorseService {
             throw new ResourceNotFoundException("Horse not found with id: " + id);
         }
         horseMapper.updateEntityFromDto(request, horse);
+        arithmeticTrustScoreService.applyTrustScore(horse);
         Horse savedHorse = horseRepository.save(horse);
         return horseMapper.toDto(savedHorse);
     }

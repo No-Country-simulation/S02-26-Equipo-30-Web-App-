@@ -2,6 +2,7 @@ package com.nc.horseretail.repository;
 
 import com.nc.horseretail.dto.horse.HorseResponse;
 import com.nc.horseretail.model.horse.Horse;
+import com.nc.horseretail.model.horse.MainUse;
 import com.nc.horseretail.model.user.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,11 +20,12 @@ public interface HorseRepository extends JpaRepository<Horse, UUID> {
     boolean existsByExternalId(String horseId);
 
     @Query("SELECT h FROM Horse h WHERE " +
+            "(:keyword = '' OR " +
             "LOWER(h.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "LOWER(h.breed) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(CAST(h.mainUse AS string)) " +
-            "LIKE LOWER(CONCAT('%', :keyword, '%'))")
-    Page<Horse> search(@Param("keyword") String keyword, Pageable pageable);
+            "LOWER(CONCAT('', h.mainUse)) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+            "AND (:mainUse IS NULL OR h.mainUse = :mainUse)")
+    Page<Horse> search(@Param("keyword") String keyword, @Param("mainUse") MainUse mainUse, Pageable pageable);
 
     @Query("SELECT COUNT(DISTINCT h.owner.id) FROM Horse h")
     long countDistinctOwners();
