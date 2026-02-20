@@ -4,6 +4,7 @@ import com.nc.horseretail.model.user.User;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -36,16 +37,34 @@ public class Horse {
     private Double heightM;
     private Double weightKg;
     private Double lengthM;
+    private Double maxSpeedKmh;
 
     @Enumerated(EnumType.STRING)
     private Temperament temperament;
     @Enumerated(EnumType.STRING)
     private MainUse mainUse;
     private String lineage;
+    private Integer careerRaces;
+    private Integer daysSinceLastRace;
 
     private String birthCountry;
 
     @Embedded
     private Location location;
 
+    private Boolean sellerVerified;
+    private Integer sellerDisputes;
+    private Boolean sellerFlaggedFraud;
+
+    private Integer vetTotalExams;
+    private Integer vetMajorIssues;
+
+    private Double trustScore;
+
+    @Enumerated(EnumType.STRING)
+    private TrustScoreStatus trustScoreStatus;
+
+    private Instant trustScoreUpdatedAt;
+
+    private String trustModelVersion;
 }

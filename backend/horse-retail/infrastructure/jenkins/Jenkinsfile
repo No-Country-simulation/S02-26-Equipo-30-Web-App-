@@ -1,99 +1,92 @@
 def deployApp(Map config) {
     def composeFile = config.composeFile ?: 'docker-compose.yml'
 
-    // Credentials lookup
-    def sshCredId = config.sshKeyCredentialId ?: env.SSH_KEY_CRED
-    def vmHostCredId = config.vmHostCredentialId ?: env.VM_HOST_CRED
-    def dbUserCredId = config.dbUserCredentialId ?: env.DB_USER_CRED
-    def dbPassCredId = config.dbPasswordCredentialId ?: env.DB_PASS_CRED
-    def dockerCredId = config.dockerCredentialId ?: env.DOCKERHUB_CREDENTIALS
-
-    // Basic Validation
-    if (!sshCredId || !vmHostCredId) {
-        error("Missing required credentials for SSH or Host.")
-    }
-
+    // 1. Map Credential IDs for VM and DockerHub
     def creds = [
-        sshUserPrivateKey(credentialsId: sshCredId, keyFileVariable: 'SSH_KEY'),
-        string(credentialsId: vmHostCredId, variable: 'VM_HOST'),
-        string(credentialsId: dbUserCredId, variable: 'POSTGRES_USER'),
-        string(credentialsId: dbPassCredId, variable: 'POSTGRES_PASSWORD'),
-        usernamePassword(credentialsId: dockerCredId, usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')
+        sshUserPrivateKey(credentialsId: config.sshKeyCredentialId, keyFileVariable: 'SSH_KEY'),
+        string(credentialsId: config.vmHostCredentialId, variable: 'VM_HOST'),
+        string(credentialsId: config.dbUserCredentialId, variable: 'RAW_DB_NAME'),
+        string(credentialsId: config.dbPasswordCredentialId, variable: 'POSTGRES_PASSWORD'),
+        string(credentialsId: config.dbUrlCredentialId, variable: 'POSTGRES_DOCKER_URL'),
+        string(credentialsId: config.secretKeyCredentialId, variable: 'SECRET_KEY'),
+        usernamePassword(credentialsId: config.dockerCredentialId, usernameVariable: 'DUSER', passwordVariable: 'DPASS')
     ]
 
     withCredentials(creds) {
-         def deployImage = "edydockers/backend-horsetrust"
          def imageTag = config.imageTag
-         // This variable matches the 'image: ${BACKEND_IMAGE}' in docker-compose.yml
-         def fullBackendImage = "${deployImage}:${imageTag}"
+         def fullBackendImage = "edydockers/backend-horsetrust:${imageTag}"
 
-         // Environment variables for the Docker container
-         def pgHost = 'database'
-         def pgPort = '5432'
-         def pgDb   = 'horse-trust'
+         // HARDCODED DB NAME: Solves the credential value vs name mismatch permanently
+         def dbToUse = "HorseTrustDb1"
 
-         // We construct the command string cleanly
-         def envVars = "BACKEND_IMAGE='${fullBackendImage}' COMPOSE_PROJECT_NAME='horsetrust-backend' POSTGRES_HOST='${pgHost}' POSTGRES_PORT='${pgPort}' POSTGRES_DB='${pgDb}' POSTGRES_USER='${POSTGRES_USER}' POSTGRES_PASSWORD='${POSTGRES_PASSWORD}'"
+         def clean = { v ->
+            if (v == null) return ''
+            def s = v.replaceAll('\r', '').trim()
+            if ((s.startsWith("'") && s.endsWith("'")) || (s.startsWith('"') && s.endsWith('"'))) {
+                s = s.substring(1, s.length()-1)
+            }
+            return s
+         }
 
-         // Add Docker Hub creds to env for the login command
-         def loginVars = "DOCKERHUB_USER='${DOCKERHUB_USER}' DOCKERHUB_PASS='${DOCKERHUB_PASS}'"
+         // 2. Build .env with Proxy and Swagger visibility fixes
+         def envLines = []
+         envLines << "BACKEND_IMAGE=${fullBackendImage}"
+         envLines << "POSTGRES_DB=${dbToUse}"
+         envLines << "POSTGRES_PASSWORD=${clean(POSTGRES_PASSWORD)}"
+         envLines << "SPRING_DATASOURCE_URL=jdbc:postgresql://database:5432/${dbToUse}"
+         envLines << "SECRET_KEY=${clean(SECRET_KEY)}"
+         envLines << "SPRINGDOC_SWAGGER_UI_ENABLED=true"
+         envLines << "SPRINGDOC_API_DOCS_ENABLED=true"
+         envLines << "SERVER_FORWARD_HEADERS_STRATEGY=framework"
+         envLines << "SPRINGDOC_CONFIG_PATH=/v3/api-docs"
+         envLines << "SPRINGDOC_SWAGGER-UI_CONFIG-URL=/v3/api-docs/swagger-config"
+         envLines << "SPRINGDOC_SWAGGER_UI_URL=/v3/api-docs"
 
-         echo "🚀 Deploying image: ${fullBackendImage} to ${VM_HOST}"
+         writeFile file: 'remote.env', text: envLines.join('\n')
 
-         // 1. Create directory
-         sh "ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} 'mkdir -p ${VM_PROJECT_PATH}'"
+         // 3. Sync to VM
+         sh "ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no jenkins@${VM_HOST} 'mkdir -p /home/jenkins/horsetrust'"
+         sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no backend/horse-retail/infrastructure/docker/${composeFile} jenkins@${VM_HOST}:/home/jenkins/horsetrust/docker-compose.yml"
+         sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no remote.env jenkins@${VM_HOST}:/home/jenkins/horsetrust/.env"
 
-         // 2. Copy docker-compose file
-         sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no backend/horse-retail/infrastructure/docker/${composeFile} ${VM_USER}@${VM_HOST}:${VM_PROJECT_PATH}/docker-compose.yml"
-
-         // 3. Execute deployment
+         // 4. Remote Execution: Kill Host Postgres, Wipe Docker, Force DB Creation
          sh """
-             ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} "
-                 set -e
-                 cd ${VM_PROJECT_PATH}
-
-                 # Create network if missing
-                 sudo docker network create horse-net 2>/dev/null || true
-
-                 # Login to DockerHub (using variables passed from Jenkins)
-                 echo '${DOCKERHUB_PASS}' | sudo docker login -u '${DOCKERHUB_USER}' --password-stdin
-
-                 # Pull and Restart
-                 # We pass the env vars specifically to the docker compose command
-                 sudo env ${envVars} docker compose pull
-                 sudo env ${envVars} docker compose up -d --force-recreate
-
-                 # Cleanup
-                 sudo docker image prune -f
-                 sudo docker logout
-             "
+            ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no jenkins@${VM_HOST} '
+                cd /home/jenkins/horsetrust &&
+                sudo fuser -k 5432/tcp || true
+                sudo systemctl stop postgresql 2>/dev/null || true
+                sudo docker network create horse-net 2>/dev/null || true
+                sudo docker compose down -v --remove-orphans
+                echo "${DPASS}" | sudo docker login -u "${DUSER}" --password-stdin
+                sudo docker compose up -d database
+                sleep 15
+                sudo docker exec horsetrust-backend-database-1 psql -U postgres -c "CREATE DATABASE \\"${dbToUse}\\";" || true
+                sudo docker compose up -d spring
+                sleep 8
+                sudo docker restart horsetrust-backend-spring-1
+                sudo docker logout'
          """
+         sh 'rm -f remote.env'
      }
 }
 
 pipeline {
     agent { label "worker-node-02" }
-
-    tools {
-        jdk 'jdk21'
-        maven 'maven3'
-    }
+    tools { jdk 'jdk21'; maven 'maven3' }
 
     environment {
-        VM_USER                    = 'jenkins'
-        VM_PROJECT_PATH            = '/home/jenkins/horsetrust'
-        IMAGE_NAME                 = "local/horsetrust"
-        DOCKERHUB_CREDENTIALS      = 'edydockers-credentials'
-
-        // Define paths
-        APP_DIR                    = 'backend/horse-retail'
-        DOCKER_DIR                 = 'backend/horse-retail/infrastructure/docker'
+        VM_PROJECT_PATH = '/home/jenkins/horsetrust'
+        IMAGE_NAME      = "local/horsetrust"
+        DOCKERHUB_CRED  = 'edydockers-credentials'
+        APP_DIR         = 'backend/horse-retail'
+        DOCKER_DIR      = 'backend/horse-retail/infrastructure/docker'
     }
 
     stages {
         stage('Checkout Source Code') {
             steps {
                 cleanWs(deleteDirs: true)
+                // In SCM mode, this automatically uses the URL/Credentials from the job settings
                 checkout scm
             }
         }
@@ -104,34 +97,17 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build and Push Image') {
             steps {
                 script {
+                    def tag = "prod-${env.BUILD_NUMBER}"
                     sh "docker build -t ${IMAGE_NAME} -f ${DOCKER_DIR}/Dockerfile ${APP_DIR}"
-                }
-            }
-        }
-
-        stage('Push Docker Image') {
-            steps {
-                script {
-                    def imageToPush = "edydockers/backend-horsetrust"
-                    def imageTag = "prod-${env.BUILD_NUMBER}"
-                    def latestTag = "latest"
-
-                    withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CREDENTIALS, usernameVariable: 'DUSER', passwordVariable: 'DPASS')]) {
-                        sh """#!/bin/bash
-                            set -euo pipefail
-                            echo '${DPASS}' | docker login -u '${DUSER}' --password-stdin
-
-                            docker tag ${IMAGE_NAME} ${imageToPush}:${imageTag}
-                            docker push ${imageToPush}:${imageTag}
-
-                            docker tag ${IMAGE_NAME} ${imageToPush}:${latestTag}
-                            docker push ${imageToPush}:${latestTag}
-
-                            docker logout
-                        """
+                    withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CRED, usernameVariable: 'U', passwordVariable: 'P')]) {
+                        sh "echo \"\$P\" | docker login -u \"\$U\" --password-stdin"
+                        sh "docker tag ${IMAGE_NAME} edydockers/backend-horsetrust:${tag}"
+                        sh "docker tag ${IMAGE_NAME} edydockers/backend-horsetrust:latest"
+                        sh "docker push edydockers/backend-horsetrust:${tag}"
+                        sh "docker push edydockers/backend-horsetrust:latest"
                     }
                 }
             }
@@ -145,7 +121,10 @@ pipeline {
                         imageTag: "prod-${env.BUILD_NUMBER}",
                         sshKeyCredentialId: 'vm-ssh-key-98',
                         dbUserCredentialId: 'horsetrust-db-name',
-                        dbPasswordCredentialId: 'horsetrust-db-pass'
+                        dbPasswordCredentialId: 'horsetrust-db-pass',
+                        dbUrlCredentialId: 'horsetrust-db-url',
+                        secretKeyCredentialId: 'horsetrust-secret-key',
+                        dockerCredentialId: env.DOCKERHUB_CRED
                     )
                  }
              }
@@ -154,9 +133,7 @@ pipeline {
 
     post {
         always {
-            script {
-                sh "docker rmi ${IMAGE_NAME} || true"
-            }
+            sh "docker rmi ${IMAGE_NAME} || true"
             cleanWs()
         }
     }
