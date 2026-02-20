@@ -30,14 +30,24 @@ public class HorseRequest {
     private Double heightM;
     private Double weightKg;
     private Double lengthM;
+    private Double maxSpeedKmh;
 
     private Temperament temperament;
     private MainUse mainUse;
     private String lineage;
+    private Integer careerRaces;
+    private Integer daysSinceLastRace;
 
     private String birthCountry;
 
     @Valid
     @NotNull
     private LocationRequest location;
+
+    private Boolean sellerVerified;
+    private Integer sellerDisputes;
+    private Boolean sellerFlaggedFraud;
+
+    private Integer vetTotalExams;
+    private Integer vetMajorIssues;
 }

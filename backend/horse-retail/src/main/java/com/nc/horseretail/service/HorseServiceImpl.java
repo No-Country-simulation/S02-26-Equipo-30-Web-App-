@@ -2,12 +2,11 @@ package com.nc.horseretail.service;
 
 import com.nc.horseretail.dto.HorseRequest;
 import com.nc.horseretail.dto.HorseResponse;
-import com.nc.horseretail.dto.ml.MlHorseTrustScoreResponse;
 import com.nc.horseretail.exception.BusinessException;
 import com.nc.horseretail.exception.ResourceNotFoundException;
 import com.nc.horseretail.mapper.HorseMapper;
 import com.nc.horseretail.model.horse.Horse;
-import com.nc.horseretail.model.horse.TrustScoreStatus;
+import com.nc.horseretail.model.horse.MainUse;
 import com.nc.horseretail.model.user.User;
 import com.nc.horseretail.repository.HorseRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,9 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -28,7 +25,7 @@ public class HorseServiceImpl implements HorseService {
 
     private final HorseRepository horseRepository;
     private final HorseMapper horseMapper;
-    private final MlConnectionService mlConnectionService;
+    private final ArithmeticTrustScoreService arithmeticTrustScoreService;
 
     // ============================
     // CREATE HORSE
@@ -40,41 +37,23 @@ public class HorseServiceImpl implements HorseService {
 
         Horse horse = horseMapper.toEntity(request);
         horse.setOwner(owner);
-        horse.setTrustScoreStatus(TrustScoreStatus.PENDING);
-
-        Horse savedHorse = horseRepository.save(horse);
-
-        Optional<MlHorseTrustScoreResponse> mlResponse = mlConnectionService.requestTrustScore(savedHorse);
-        if (mlResponse.isPresent()) {
-            MlHorseTrustScoreResponse score = mlResponse.get();
-            savedHorse.setTrustScore(score.getTrustScore());
-            savedHorse.setTrustScoreStatus(TrustScoreStatus.READY);
-            savedHorse.setTrustScoreUpdatedAt(score.getGeneratedAt() != null ? score.getGeneratedAt() : Instant.now());
-            savedHorse.setTrustModelVersion(score.getModelVersion());
-            horseRepository.save(savedHorse);
-            return;
+        if (horse.getSellerVerified() == null) {
+            horse.setSellerVerified(owner.isEmailVerified());
         }
-
-        savedHorse.setTrustScoreStatus(TrustScoreStatus.FAILED);
-        savedHorse.setTrustScoreUpdatedAt(Instant.now());
-        horseRepository.save(savedHorse);
+        arithmeticTrustScoreService.applyTrustScore(horse);
+        horseRepository.save(horse);
     }
 
     // ============================
     // GET / SEARCH HORSES (PAGINATED)
     // ============================
     @Override
-    public Page<HorseResponse> getHorses(String keyword, Pageable pageable) {
-
-        Page<Horse> horsePage;
-
-        if (keyword == null || keyword.isBlank()) {
-            horsePage = horseRepository.findAll(pageable);
-        } else {
-            horsePage = horseRepository.search(keyword.trim(), pageable);
+    public Page<HorseResponse> getHorses(String keyword, MainUse mainUse, Pageable pageable) {
+        String sanitizedKeyword = keyword == null ? null : keyword.trim();
+        if (sanitizedKeyword != null && sanitizedKeyword.isBlank()) {
+            sanitizedKeyword = null;
         }
-
-        return horsePage.map(horseMapper::toDto);
+        return horseRepository.search(sanitizedKeyword, mainUse, pageable).map(horseMapper::toDto);
     }
 
     // ============================
@@ -98,6 +77,7 @@ public class HorseServiceImpl implements HorseService {
             throw new ResourceNotFoundException("Horse not found with id: " + id);
         }
         horseMapper.updateEntityFromDto(request, horse);
+        arithmeticTrustScoreService.applyTrustScore(horse);
         Horse savedHorse = horseRepository.save(horse);
         return horseMapper.toDto(savedHorse);
     }

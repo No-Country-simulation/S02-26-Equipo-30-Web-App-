@@ -6,6 +6,7 @@ import com.nc.horseretail.model.listing.ListingVerificationStatus;
 import com.nc.horseretail.model.listing.RiskAssessment;
 import com.nc.horseretail.model.user.User;
 import com.nc.horseretail.repository.*;
+import com.nc.horseretail.service.ArithmeticTrustScoreService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
@@ -30,6 +31,7 @@ public class CsvImportService {
     private final ListingCsvMapper listingCsvMapper;
     private final ListingVerificationStatusRepository verificationRepository;
     private final RiskAssessmentRepository riskRepository;
+    private final ArithmeticTrustScoreService arithmeticTrustScoreService;
 
     @Transactional
     public void importFromClasspath(String path) {
@@ -57,6 +59,7 @@ public class CsvImportService {
 
                 // Create Horse
                 Horse horse = horseCsvMapper.toEntity(row, user);
+                arithmeticTrustScoreService.applyTrustScore(horse);
                 horseRepository.save(horse);
 
                 // Create Listing
