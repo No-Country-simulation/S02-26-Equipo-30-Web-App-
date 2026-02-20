@@ -1,7 +1,7 @@
 package com.nc.horseretail.service;
 
-import com.nc.horseretail.dto.HorseRequest;
-import com.nc.horseretail.dto.HorseResponse;
+import com.nc.horseretail.dto.horse.HorseRequest;
+import com.nc.horseretail.dto.horse.HorseResponse;
 import com.nc.horseretail.exception.BusinessException;
 import com.nc.horseretail.exception.ResourceNotFoundException;
 import com.nc.horseretail.mapper.HorseMapper;

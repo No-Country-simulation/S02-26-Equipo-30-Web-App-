@@ -1,7 +1,6 @@
 package com.nc.horseretail.repository;
 
-import aj.org.objectweb.asm.commons.Remapper;
-import com.nc.horseretail.dto.HorseResponse;
+import com.nc.horseretail.dto.horse.HorseResponse;
 import com.nc.horseretail.model.horse.Horse;
 import com.nc.horseretail.model.user.User;
 import org.springframework.data.domain.Page;

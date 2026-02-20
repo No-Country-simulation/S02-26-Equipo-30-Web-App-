@@ -1,6 +1,8 @@
 package com.nc.horseretail.service;
 
 import com.nc.horseretail.dto.*;
+import com.nc.horseretail.dto.auth.PasswordUpdateRequest;
+import com.nc.horseretail.dto.horse.HorseResponse;
 import com.nc.horseretail.exception.BusinessException;
 import com.nc.horseretail.exception.ResourceNotFoundException;
 import com.nc.horseretail.mapper.UserMapper;

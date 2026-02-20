@@ -1,6 +1,9 @@
 package com.nc.horseretail.service;
 
-import com.nc.horseretail.dto.*;
+import com.nc.horseretail.dto.messaging.ConversationDetailResponse;
+import com.nc.horseretail.dto.messaging.ConversationSummaryResponse;
+import com.nc.horseretail.dto.messaging.MessageResponse;
+import com.nc.horseretail.dto.messaging.SendMessageRequest;
 import com.nc.horseretail.exception.ForbiddenOperationException;
 import com.nc.horseretail.exception.ResourceNotFoundException;
 import com.nc.horseretail.model.communication.Conversation;

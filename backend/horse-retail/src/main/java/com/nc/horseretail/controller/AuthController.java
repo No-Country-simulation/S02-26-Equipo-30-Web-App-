@@ -1,7 +1,7 @@
 package com.nc.horseretail.controller;
 
 import com.nc.horseretail.config.SecurityUser;
-import com.nc.horseretail.dto.*;
+import com.nc.horseretail.dto.auth.*;
 import com.nc.horseretail.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

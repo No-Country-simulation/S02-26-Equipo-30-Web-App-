@@ -1,4 +1,4 @@
-package com.nc.horseretail.dto;
+package com.nc.horseretail.dto.auth;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
@@ -9,15 +9,12 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@Schema(description = "Request to reset user password using reset token")
-public class ResetPasswordRequest {
+@Schema(description = "Request object for updating user password")
+public class PasswordUpdateRequest {
 
-    @NotBlank(message = "Reset token is required")
-    @Schema(
-            description = "Password reset token received via email",
-            example = "8f5c2e7a-1c23-4b3f-9f44-2b6d2b4a8d99"
-    )
-    private String token;
+    @NotBlank(message = "Current password is required")
+    @Schema(description = "User's current password", example = "OldPassword123!")
+    private String currentPassword;
 
     @NotBlank(message = "New password is required")
     @Size(min = 8, max = 64, message = "Password must be between 8 and 64 characters")
@@ -32,9 +29,6 @@ public class ResetPasswordRequest {
     private String newPassword;
 
     @NotBlank(message = "Password confirmation is required")
-    @Schema(
-            description = "Confirmation of the new password",
-            example = "NewSecure123!"
-    )
+    @Schema(description = "Confirmation of the new password", example = "NewSecure123!")
     private String confirmPassword;
 }

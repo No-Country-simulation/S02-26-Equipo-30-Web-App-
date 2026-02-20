@@ -2,10 +2,10 @@ package com.nc.horseretail.controller;
 
 import com.nc.horseretail.config.SecurityUser;
 import com.nc.horseretail.dto.ListingResponse;
-import com.nc.horseretail.dto.HorseResponse;
+import com.nc.horseretail.dto.horse.HorseResponse;
 import com.nc.horseretail.dto.UserResponse;
 import com.nc.horseretail.dto.UserUpdateRequest;
-import com.nc.horseretail.dto.PasswordUpdateRequest;
+import com.nc.horseretail.dto.auth.PasswordUpdateRequest;
 import com.nc.horseretail.model.user.Role;
 import com.nc.horseretail.model.user.UserStatus;
 import com.nc.horseretail.service.UserService;

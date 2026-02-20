@@ -1,10 +1,10 @@
 package com.nc.horseretail.controller;
 
 import com.nc.horseretail.config.SecurityUser;
-import com.nc.horseretail.dto.ConversationDetailResponse;
-import com.nc.horseretail.dto.ConversationSummaryResponse;
-import com.nc.horseretail.dto.MessageResponse;
-import com.nc.horseretail.dto.SendMessageRequest;
+import com.nc.horseretail.dto.messaging.ConversationDetailResponse;
+import com.nc.horseretail.dto.messaging.ConversationSummaryResponse;
+import com.nc.horseretail.dto.messaging.MessageResponse;
+import com.nc.horseretail.dto.messaging.SendMessageRequest;
 import com.nc.horseretail.service.ChatService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
