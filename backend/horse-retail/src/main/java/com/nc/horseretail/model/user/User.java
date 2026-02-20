@@ -51,6 +51,11 @@ public class User implements Serializable {
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserStatus status = UserStatus.ACTIVE;
+
     @PrePersist
     void onCreate() {
         this.createdAt = Instant.now();

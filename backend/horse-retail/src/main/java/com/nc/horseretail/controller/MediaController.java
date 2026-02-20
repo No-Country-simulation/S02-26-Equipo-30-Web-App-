@@ -17,13 +17,13 @@ public class MediaController {
 
     private final MediaService mediaService;
 
-    @PostMapping
+//    @PostMapping
     public ResponseEntity<MediaResponse> uploadMedia(
             @RequestBody MediaUploadRequest request) {
         return ResponseEntity.ok(mediaService.uploadMedia(request));
     }
 
-    @GetMapping("/horse/{horseId}")
+//    @GetMapping("/horse/{horseId}")
     public ResponseEntity<List<MediaResponse>> getMediaByHorse(
             @PathVariable UUID horseId) {
         return ResponseEntity.ok(mediaService.getMediaByHorse(horseId));

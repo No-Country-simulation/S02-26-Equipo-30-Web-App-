@@ -1,6 +1,9 @@
 package com.nc.horseretail.service;
 
-import com.nc.horseretail.dto.*;
+import com.nc.horseretail.dto.messaging.ConversationDetailResponse;
+import com.nc.horseretail.dto.messaging.ConversationSummaryResponse;
+import com.nc.horseretail.dto.messaging.MessageResponse;
+import com.nc.horseretail.dto.messaging.SendMessageRequest;
 import com.nc.horseretail.exception.ForbiddenOperationException;
 import com.nc.horseretail.exception.ResourceNotFoundException;
 import com.nc.horseretail.model.communication.Conversation;
@@ -31,24 +34,26 @@ public class ChatServiceImpl implements ChatService {
     // =============================
     // SEND MESSAGE
     // =============================
-
     @Override
-    public MessageResponse sendMessage(SendMessageRequest request, User sender) {
+    public MessageResponse sendMessage(UUID conversationId,
+                                       SendMessageRequest request,
+                                       User sender) {
 
-        Listing listing = listingRepository.findById(request.getListingId()).orElseThrow(
-                () -> new ResourceNotFoundException("Listing not found"));
-
-        Conversation conversation = conversationRepository.findByListingIdAndStartedById(
-                listing.getId(), sender.getId()).orElseGet(
-                        () -> createConversation(listing, sender));
+        Conversation conversation = getConversationOrThrow(conversationId);
 
         validateAccess(conversation, sender);
+
+        if (conversation.getStatus() == ConversationStatus.CLOSED) {
+            throw new IllegalStateException("Conversation is closed");
+        }
 
         Message message = Message.builder()
                 .conversation(conversation)
                 .sender(sender)
                 .messageText(request.getText())
-                .sentAt(Instant.now()).build();
+                .sentAt(Instant.now())
+                .read(false)
+                .build();
 
         Message saved = messageRepository.save(message);
 
@@ -58,21 +63,56 @@ public class ChatServiceImpl implements ChatService {
     }
 
     // =============================
+    // CREATE CONVERSATION
+    // =============================
+    @Override
+    public ConversationDetailResponse createConversation(UUID listingId, User user) {
+
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Listing not found"));
+
+        if (listing.getOwner().getId().equals(user.getId())) {
+            throw new IllegalStateException("You cannot start a conversation on your own listing");
+        }
+
+        Conversation conversation = conversationRepository
+                .findByListingIdAndStartedById(listingId, user.getId())
+                .orElseGet(() -> conversationRepository.save(
+                        Conversation.builder()
+                                .listing(listing)
+                                .startedBy(user)
+                                .status(ConversationStatus.OPEN)
+                                .createdAt(Instant.now())
+                                .updatedAt(Instant.now())
+                                .build()
+                ));
+
+        return ConversationDetailResponse.builder()
+                .conversationId(conversation.getId())
+                .listingId(listing.getId())
+                .listingTitle(listing.getHorse().getName())
+                .messages(List.of())
+                .build();
+    }
+
+    // =============================
     // LIST USER CONVERSATIONS
     // =============================
-
     @Override
     @Transactional(readOnly = true)
     public List<ConversationSummaryResponse> getUserConversations(User user) {
 
-        List<Conversation> conversations = conversationRepository.findUserConversations(user.getId());
+        List<Conversation> conversations =
+                conversationRepository.findUserConversations(user.getId());
 
         return conversations.stream().map(c -> {
 
             User otherUser = resolveOtherUser(c, user);
 
-            String lastMessage = messageRepository.findTopByConversationIdOrderBySentAtDesc(c.getId())
-                    .map(Message::getMessageText).orElse("");
+            String lastMessage = messageRepository
+                    .findTopByConversationIdOrderBySentAtDesc(c.getId())
+                    .map(Message::getMessageText)
+                    .orElse("");
 
             return ConversationSummaryResponse.builder()
                     .conversationId(c.getId())
@@ -86,20 +126,21 @@ public class ChatServiceImpl implements ChatService {
     }
 
     // =============================
-    // GET FULL CONVERSATION
+    // GET CONVERSATION
     // =============================
-
     @Override
     @Transactional(readOnly = true)
     public ConversationDetailResponse getConversation(UUID conversationId, User user) {
 
-        Conversation conversation = conversationRepository.findById(conversationId).orElseThrow(
-                () -> new ResourceNotFoundException("Conversation not found"));
+        Conversation conversation = getConversationOrThrow(conversationId);
 
         validateAccess(conversation, user);
 
-        List<MessageResponse> messages = messageRepository.findConversationMessages(conversationId)
-                .stream().map(this::mapMessage).toList();
+        List<MessageResponse> messages =
+                messageRepository.findConversationMessages(conversationId)
+                        .stream()
+                        .map(this::mapMessage)
+                        .toList();
 
         return ConversationDetailResponse.builder()
                 .conversationId(conversation.getId())
@@ -110,18 +151,69 @@ public class ChatServiceImpl implements ChatService {
     }
 
     // =============================
+    // GET MESSAGES ONLY
+    // =============================
+    @Override
+    @Transactional(readOnly = true)
+    public List<MessageResponse> getMessages(UUID conversationId, User user) {
+
+        Conversation conversation = getConversationOrThrow(conversationId);
+
+        validateAccess(conversation, user);
+
+        return messageRepository.findConversationMessages(conversationId)
+                .stream()
+                .map(this::mapMessage)
+                .toList();
+    }
+
+    // =============================
+    // MARK AS READ
+    // =============================
+    @Override
+    public void markMessageAsRead(UUID messageId, User user) {
+
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new ResourceNotFoundException("Message not found"));
+
+        validateAccess(message.getConversation(), user);
+
+        if (!message.getSender().getId().equals(user.getId())) {
+            message.setRead(true);
+        }
+    }
+
+    // =============================
+    // CLOSE CONVERSATION
+    // =============================
+    @Override
+    public void closeConversation(UUID conversationId, User user) {
+
+        Conversation conversation = getConversationOrThrow(conversationId);
+
+        validateAccess(conversation, user);
+
+        conversation.setStatus(ConversationStatus.CLOSED);
+        conversation.setUpdatedAt(Instant.now());
+    }
+
+    // =============================
+    // UNREAD COUNT
+    // =============================
+    @Override
+    @Transactional(readOnly = true)
+    public Long getUnreadCount(User user) {
+
+        return messageRepository.countUnreadMessages(user.getId());
+    }
+
+    // =============================
     // PRIVATE HELPERS
     // =============================
 
-    private Conversation createConversation(Listing listing, User buyer) {
-
-        return conversationRepository.save(Conversation.builder()
-                .listing(listing)
-                .startedBy(buyer)
-                .status(ConversationStatus.OPEN)
-                .createdAt(Instant.now())
-                .updatedAt(Instant.now())
-                .build());
+    private Conversation getConversationOrThrow(UUID conversationId) {
+        return conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Conversation not found"));
     }
 
     private void validateAccess(Conversation conversation, User user) {

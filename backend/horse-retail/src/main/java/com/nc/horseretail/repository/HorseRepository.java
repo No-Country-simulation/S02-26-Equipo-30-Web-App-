@@ -1,6 +1,6 @@
 package com.nc.horseretail.repository;
 
-import com.nc.horseretail.dto.HorseResponse;
+import com.nc.horseretail.dto.horse.HorseResponse;
 import com.nc.horseretail.model.horse.Horse;
 import com.nc.horseretail.model.user.User;
 import org.springframework.data.domain.Page;
@@ -31,4 +31,6 @@ public interface HorseRepository extends JpaRepository<Horse, UUID> {
     Long countHorsesByOwner(User domainUser);
 
     List<HorseResponse> findAllByOwner(User owner);
+
+    Page<Horse> findByOwner(User user, Pageable pageable);
 }
