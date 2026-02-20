@@ -1,6 +1,8 @@
 package com.nc.horseretail.service;
 
 import com.nc.horseretail.dto.*;
+import com.nc.horseretail.dto.auth.PasswordUpdateRequest;
+import com.nc.horseretail.dto.horse.HorseResponse;
 import com.nc.horseretail.model.user.Role;
 import com.nc.horseretail.model.user.User;
 import com.nc.horseretail.model.user.UserStatus;

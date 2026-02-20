@@ -1,10 +1,10 @@
 package com.nc.horseretail.service;
 
 import com.nc.horseretail.config.JwtService;
-import com.nc.horseretail.dto.AuthRequest;
-import com.nc.horseretail.dto.AuthResponse;
-import com.nc.horseretail.dto.RegisterRequest;
-import com.nc.horseretail.dto.ResetPasswordRequest;
+import com.nc.horseretail.dto.auth.AuthRequest;
+import com.nc.horseretail.dto.auth.AuthResponse;
+import com.nc.horseretail.dto.auth.RegisterRequest;
+import com.nc.horseretail.dto.auth.ResetPasswordRequest;
 import com.nc.horseretail.exception.BusinessException;
 import com.nc.horseretail.exception.EmailAlreadyExistException;
 import com.nc.horseretail.exception.InvalidCredentialException;

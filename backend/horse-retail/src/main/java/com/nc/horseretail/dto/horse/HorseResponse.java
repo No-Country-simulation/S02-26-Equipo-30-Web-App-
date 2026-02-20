@@ -1,10 +1,7 @@
-package com.nc.horseretail.dto;
+package com.nc.horseretail.dto.horse;
 
 import com.nc.horseretail.model.horse.MainUse;
 import com.nc.horseretail.model.horse.Temperament;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.time.LocalDate;
@@ -14,30 +11,18 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class HorseRequest {
+public class HorseResponse {
 
-    @NotBlank
     private String name;
-
-    @NotNull
     private LocalDate birthDate;
-
-    @NotNull
     private String sex;
-    @NotBlank
     private String breed;
-
     private Double heightM;
     private Double weightKg;
     private Double lengthM;
-
     private Temperament temperament;
     private MainUse mainUse;
     private String lineage;
-
     private String birthCountry;
-
-    @Valid
-    @NotNull
-    private LocationRequest location;
+    private LocationResponse location;
 }

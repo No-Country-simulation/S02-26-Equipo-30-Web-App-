@@ -1,9 +1,9 @@
 package com.nc.horseretail.service;
 
-import com.nc.horseretail.dto.ConversationDetailResponse;
-import com.nc.horseretail.dto.ConversationSummaryResponse;
-import com.nc.horseretail.dto.MessageResponse;
-import com.nc.horseretail.dto.SendMessageRequest;
+import com.nc.horseretail.dto.messaging.ConversationDetailResponse;
+import com.nc.horseretail.dto.messaging.ConversationSummaryResponse;
+import com.nc.horseretail.dto.messaging.MessageResponse;
+import com.nc.horseretail.dto.messaging.SendMessageRequest;
 import com.nc.horseretail.model.user.User;
 
 import java.util.List;
