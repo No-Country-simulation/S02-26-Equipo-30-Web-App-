@@ -1,6 +1,6 @@
 package com.nc.horseretail.mapper;
 
-import com.nc.horseretail.dto.HorseResponse;
+import com.nc.horseretail.dto.horse.HorseResponse;
 import com.nc.horseretail.dto.ListingResponse;
 import com.nc.horseretail.dto.UserResponse;
 import com.nc.horseretail.model.horse.Horse;

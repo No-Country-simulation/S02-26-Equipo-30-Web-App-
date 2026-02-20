@@ -22,4 +22,18 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
     List<Message> findConversationMessages(UUID conversationId);
 
     Optional<Message> findTopByConversationIdOrderBySentAtDesc(UUID conversationId);
+
+    @Query("""
+       SELECT COUNT(m)
+       FROM Message m
+       WHERE m.conversation.id IN (
+           SELECT c.id
+           FROM Conversation c
+           WHERE c.startedBy.id = :userId
+              OR c.listing.owner.id = :userId
+       )
+       AND m.sender.id <> :userId
+       AND m.read = false
+       """)
+    Long countUnreadMessages(UUID userId);
 }

@@ -1,7 +1,7 @@
 package com.nc.horseretail.service;
 
-import com.nc.horseretail.dto.HorseRequest;
-import com.nc.horseretail.dto.HorseResponse;
+import com.nc.horseretail.dto.horse.HorseRequest;
+import com.nc.horseretail.dto.horse.HorseResponse;
 import com.nc.horseretail.model.user.User;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -27,4 +27,6 @@ public interface HorseService {
     Long countMyHorses(User domainUser);
 
     Page<HorseResponse> getHorses(String keyword, Pageable pageable);
+
+    void deleteHorseByAdmin(UUID horseId);
 }

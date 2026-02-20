@@ -1,6 +1,5 @@
-package com.nc.horseretail.dto;
+package com.nc.horseretail.dto.auth;
 
-import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 

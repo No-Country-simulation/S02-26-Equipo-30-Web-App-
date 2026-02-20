@@ -210,6 +210,23 @@ public class ListingServiceImpl implements ListingService {
         return listingMapper.toDto(listingRepository.save(listing));
     }
 
+    @Override
+    public Page<ListingResponse> getAllListings(Pageable pageable) {
+        return listingRepository.findAll(pageable).map(listingMapper::toDto);
+    }
+
+    @Override
+    public void deleteListingByAdmin(UUID listingId) {
+        //TODO implement method
+        throw new BusinessException("Method not implemented yet");
+    }
+
+    @Override
+    public void forceCloseListing(UUID listingId) {
+        //TODO implement method
+        throw new BusinessException("Method not implemented yet");
+    }
+
     // ============================
     // PRIVATE HELPER
     // ============================

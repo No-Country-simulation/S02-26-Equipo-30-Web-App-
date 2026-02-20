@@ -35,4 +35,10 @@ public interface ListingService {
     ListingResponse pauseListing(UUID id, User domainUser);
 
     ListingResponse cancelListing(UUID id, User domainUser);
+
+    Page<ListingResponse> getAllListings(Pageable pageable);
+
+    void deleteListingByAdmin(UUID listingId);
+
+    void forceCloseListing(UUID listingId);
 }

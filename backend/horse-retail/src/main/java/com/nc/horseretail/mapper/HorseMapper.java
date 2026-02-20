@@ -1,7 +1,7 @@
 package com.nc.horseretail.mapper;
 
-import com.nc.horseretail.dto.HorseRequest;
-import com.nc.horseretail.dto.HorseResponse;
+import com.nc.horseretail.dto.horse.HorseRequest;
+import com.nc.horseretail.dto.horse.HorseResponse;
 import com.nc.horseretail.model.horse.Horse;
 import org.mapstruct.*;
 
