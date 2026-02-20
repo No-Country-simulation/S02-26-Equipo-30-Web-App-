@@ -3,6 +3,7 @@ package com.nc.horseretail.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -17,6 +18,7 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
@@ -30,11 +32,18 @@ public class SecurityConfig {
                         "/swagger-ui/**", "/swagger-ui.html",
                         "/api/v1/public", "/api/v1/metrics/sellers/count", 
                         "/api/v1/metrics/satisfaction")
-
                         .permitAll()
+                        .requestMatchers("/api/v1/metrics/sellers/**").permitAll()
+                        .requestMatchers("/api/v1/metrics/satisfaction").permitAll()
+                        .requestMatchers("/api/v1/metrics/horses/**").permitAll()
+                        .requestMatchers("/api/v1/metrics/listings/count").permitAll()
+                        .requestMatchers("/api/v1/metrics/breeds/**").permitAll()
+                        .requestMatchers("/api/v1/metrics/countries/**").permitAll()
                         .requestMatchers("/internal/ml/**").hasRole("ML_SERVICE")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/metrics/feedback").authenticated()
+                        .requestMatchers("/api/v1/chat/**").authenticated()
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
         )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
@@ -45,7 +54,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173", "https://frontend.vercel.app"));
+        configuration.setAllowedOrigins(List.of("https://horsetrust.vercel.app"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

@@ -1,4 +1,4 @@
-package com.nc.horseretail.dto;
+package com.nc.horseretail.dto.horse;
 
 import com.nc.horseretail.model.horse.MainUse;
 import com.nc.horseretail.model.horse.Temperament;

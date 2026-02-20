@@ -1,4 +1,4 @@
-package com.nc.horseretail.dto;
+package com.nc.horseretail.dto.messaging;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

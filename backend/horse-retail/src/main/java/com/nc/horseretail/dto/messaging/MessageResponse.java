@@ -1,4 +1,4 @@
-package com.nc.horseretail.dto;
+package com.nc.horseretail.dto.messaging;
 
 import lombok.Builder;
 import lombok.Getter;

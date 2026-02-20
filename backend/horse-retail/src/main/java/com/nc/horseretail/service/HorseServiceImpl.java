@@ -1,7 +1,7 @@
 package com.nc.horseretail.service;
 
-import com.nc.horseretail.dto.HorseRequest;
-import com.nc.horseretail.dto.HorseResponse;
+import com.nc.horseretail.dto.horse.HorseRequest;
+import com.nc.horseretail.dto.horse.HorseResponse;
 import com.nc.horseretail.exception.BusinessException;
 import com.nc.horseretail.exception.ResourceNotFoundException;
 import com.nc.horseretail.mapper.HorseMapper;
@@ -49,9 +49,9 @@ public class HorseServiceImpl implements HorseService {
     // ============================
     @Override
     public Page<HorseResponse> getHorses(String keyword, MainUse mainUse, Pageable pageable) {
-        String sanitizedKeyword = keyword == null ? null : keyword.trim();
-        if (sanitizedKeyword != null && sanitizedKeyword.isBlank()) {
-            sanitizedKeyword = null;
+        String sanitizedKeyword = keyword == null ? "" : keyword.trim();
+        if (sanitizedKeyword.isBlank()) {
+            sanitizedKeyword = "";
         }
         return horseRepository.search(sanitizedKeyword, mainUse, pageable).map(horseMapper::toDto);
     }
@@ -119,6 +119,14 @@ public class HorseServiceImpl implements HorseService {
     public long countTotalHorses() {
         return horseRepository.count();
     }
+
+
+    @Override
+    public void deleteHorseByAdmin(UUID horseId) {
+//TODO implement method
+        throw new BusinessException("Method not implemented yet");
+    }
+
 
     // ============================
     // HELPER METHODS

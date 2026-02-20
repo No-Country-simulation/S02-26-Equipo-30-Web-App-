@@ -1,6 +1,6 @@
 package com.nc.horseretail.repository;
 
-import com.nc.horseretail.dto.HorseResponse;
+import com.nc.horseretail.dto.horse.HorseResponse;
 import com.nc.horseretail.model.horse.Horse;
 import com.nc.horseretail.model.horse.MainUse;
 import com.nc.horseretail.model.user.User;
@@ -20,10 +20,10 @@ public interface HorseRepository extends JpaRepository<Horse, UUID> {
     boolean existsByExternalId(String horseId);
 
     @Query("SELECT h FROM Horse h WHERE " +
-            "(:keyword IS NULL OR " +
+            "(:keyword = '' OR " +
             "LOWER(h.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "LOWER(h.breed) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(CAST(h.mainUse AS string)) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+            "LOWER(CONCAT('', h.mainUse)) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
             "AND (:mainUse IS NULL OR h.mainUse = :mainUse)")
     Page<Horse> search(@Param("keyword") String keyword, @Param("mainUse") MainUse mainUse, Pageable pageable);
 
@@ -33,4 +33,6 @@ public interface HorseRepository extends JpaRepository<Horse, UUID> {
     Long countHorsesByOwner(User domainUser);
 
     List<HorseResponse> findAllByOwner(User owner);
+
+    Page<Horse> findByOwner(User user, Pageable pageable);
 }

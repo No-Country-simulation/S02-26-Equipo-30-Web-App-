@@ -1,4 +1,4 @@
-package com.nc.horseretail.dto;
+package com.nc.horseretail.dto.auth;
 
 import lombok.*;
 

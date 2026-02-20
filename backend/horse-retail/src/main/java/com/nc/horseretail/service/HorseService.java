@@ -1,7 +1,7 @@
 package com.nc.horseretail.service;
 
-import com.nc.horseretail.dto.HorseRequest;
-import com.nc.horseretail.dto.HorseResponse;
+import com.nc.horseretail.dto.horse.HorseRequest;
+import com.nc.horseretail.dto.horse.HorseResponse;
 import com.nc.horseretail.model.horse.MainUse;
 import com.nc.horseretail.model.user.User;
 import jakarta.validation.Valid;
@@ -28,4 +28,10 @@ public interface HorseService {
     Long countMyHorses(User domainUser);
 
     Page<HorseResponse> getHorses(String keyword, MainUse mainUse, Pageable pageable);
+
+    default Page<HorseResponse> getHorses(String keyword, Pageable pageable) {
+        return getHorses(keyword, null, pageable);
+    }
+
+    void deleteHorseByAdmin(UUID horseId);
 }

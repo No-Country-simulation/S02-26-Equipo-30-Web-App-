@@ -1,8 +1,8 @@
 package com.nc.horseretail.controller;
 
 import com.nc.horseretail.config.SecurityUser;
-import com.nc.horseretail.dto.HorseRequest;
-import com.nc.horseretail.dto.HorseResponse;
+import com.nc.horseretail.dto.horse.HorseRequest;
+import com.nc.horseretail.dto.horse.HorseResponse;
 import com.nc.horseretail.model.horse.MainUse;
 import com.nc.horseretail.service.HorseService;
 import io.swagger.v3.oas.annotations.Operation;
