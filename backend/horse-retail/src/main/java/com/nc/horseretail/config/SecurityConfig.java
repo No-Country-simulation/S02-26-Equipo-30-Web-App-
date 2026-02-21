@@ -22,46 +22,29 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
-        http.csrf(AbstractHttpConfigurer::disable)
-    .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-    .authorizeHttpRequests(auth -> {
-        auth.requestMatchers(
-            "/api/v1/auth/**", "/v3/api-docs/**",
-            "/swagger-ui/**", "/swagger-ui.html",
-            "/api/v1/public", "/api/v1/metrics/sellers/count", 
-            "/api/v1/metrics/satisfaction"
-        ).permitAll();
+        http.csrf(AbstractHttpConfigurer::disable) //Disable CSRF for JWT
 
-        auth.requestMatchers("/internal/ml/**").hasRole("ML_SERVICE");
-        auth.requestMatchers("/api/admin/**").hasRole("ADMIN");
-        auth.requestMatchers("/api/v1/metrics/feedback").authenticated();
-        auth.anyRequest().authenticated();
-    })
-    .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                .cors(cors -> cors
+                        .configurationSource(corsConfigurationSource()))
 
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .authorizeHttpRequests(auth -> auth.requestMatchers(
-                        "/api/v1/auth/**", "/v3/api-docs/**",
-                        "/swagger-ui/**", "/swagger-ui.html",
-                        "/api/v1/public", "/api/v1/metrics/sellers/count", 
-                        "/api/v1/metrics/satisfaction")
-                        .permitAll()
-                        .requestMatchers("/api/v1/metrics/sellers/**").permitAll()
-                        .requestMatchers("/api/v1/metrics/satisfaction").permitAll()
-                        .requestMatchers("/api/v1/metrics/horses/**").permitAll()
-                        .requestMatchers("/api/v1/metrics/listings/count").permitAll()
-                        .requestMatchers("/api/v1/metrics/breeds/**").permitAll()
-                        .requestMatchers("/api/v1/metrics/countries/**").permitAll()
-                        .requestMatchers("/internal/ml/**").hasRole("ML_SERVICE")
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/api/v1/auth/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
+                        ).permitAll()
+                        .requestMatchers("/api/v1/metrics/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/metrics/feedback").authenticated()
                         .requestMatchers("/api/v1/chat/**").authenticated()
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                        .anyRequest().authenticated()
-        )
+                        .requestMatchers("/api/v1/media/upload").authenticated()
+                        .requestMatchers("/api/v1/media/**").permitAll()
+                        .anyRequest().authenticated())
+
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -69,14 +52,23 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("https://horsetrust.vercel.app"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+
+        configuration.setAllowedOrigins(List.of(
+                "https://horsetrust.vercel.app"
+        ));
+
+        configuration.setAllowedMethods(List.of(
+                "GET", "POST", "PUT", "DELETE", "OPTIONS"
+        ));
+
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
+
         return source;
     }
 }
