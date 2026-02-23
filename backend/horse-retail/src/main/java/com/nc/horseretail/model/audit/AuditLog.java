@@ -25,7 +25,13 @@ public class AuditLog {
     private String action;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "performed_by_id")
     private User performedBy;
 
     private Instant performedAt;
+
+    @PrePersist
+    public void prePersist() {
+        this.performedAt = Instant.now();
+    }
 }

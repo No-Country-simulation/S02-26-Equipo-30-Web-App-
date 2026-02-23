@@ -33,4 +33,7 @@ public class Message {
 
     @Column(nullable = false)
     private Instant sentAt;
+
+    @Column(nullable = false)
+    private boolean read = false;
 }

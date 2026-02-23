@@ -7,7 +7,9 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import java.nio.file.AccessDeniedException;
 import java.time.Instant;
 import java.util.stream.Collectors;
 
@@ -30,10 +32,10 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(BusinessException.class)
-    @ResponseStatus(HttpStatus.UNPROCESSABLE_CONTENT)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
     public ApiError handleBusinessException(BusinessException ex, HttpServletRequest request) {
         log.warn("Business rule violation: {}", ex.getMessage());
-        return build(HttpStatus.UNPROCESSABLE_CONTENT, "Business Rule Violation", ex, request);
+        return build(HttpStatus.UNPROCESSABLE_ENTITY, "Business Rule Violation", ex, request);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -45,6 +47,14 @@ public class GlobalExceptionHandler {
 
         log.warn("Validation error: {}", message);
 
+        return build(HttpStatus.BAD_REQUEST, "Validation Error", message, request);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiError handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+        String message = "Invalid value for parameter '" + ex.getName() + "'";
+        log.warn("Type mismatch: {}", message);
         return build(HttpStatus.BAD_REQUEST, "Validation Error", message, request);
     }
 
@@ -80,6 +90,32 @@ public class GlobalExceptionHandler {
     public ApiError handleEmailAlreadyExist(EmailAlreadyExistException ex, HttpServletRequest request) {
         log.warn("Email already exists: {}", ex.getMessage());
         return build(HttpStatus.CONFLICT, "Conflict", ex, request);
+    }
+
+    @ExceptionHandler(InvalidCredentialException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ApiError handleInvalidCredential(InvalidCredentialException ex, HttpServletRequest request) {
+        log.warn("Invalid credential: {}", ex.getMessage());
+        return build(HttpStatus.UNAUTHORIZED, "Invalid Credential", ex, request);
+    }
+
+    @ExceptionHandler(ForbiddenOperationException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ApiError handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+        return build(HttpStatus.FORBIDDEN, "Access Denied", ex, request);
+    }
+
+    @ExceptionHandler(FileDeletionException.class)
+    @ResponseStatus(HttpStatus.BAD_GATEWAY)
+    public ApiError handleFileUploadException(FileDeletionException ex, HttpServletRequest request) {
+        log.error("File deletion error: {}", ex.getMessage());
+        return build(HttpStatus.BAD_GATEWAY, "File Deletion Error", ex, request);
+    }
+
+    @ExceptionHandler(FileUploadException.class)
+    public ApiError handleUpload(FileUploadException ex, HttpServletRequest request) {
+        log.error("File upload error: {}", ex.getMessage());
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, "File upload Error", ex, request);
     }
 
     // ======================
