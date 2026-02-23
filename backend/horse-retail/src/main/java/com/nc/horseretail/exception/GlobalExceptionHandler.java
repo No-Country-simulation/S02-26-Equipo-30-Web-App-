@@ -7,6 +7,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.nio.file.AccessDeniedException;
 import java.time.Instant;
@@ -40,10 +41,20 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiError handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
-        String message = ex.getBindingResult().getFieldErrors().stream().map(err -> err.getField() + " " + err.getDefaultMessage()).collect(Collectors.joining(", "));
+        String message = ex.getBindingResult().getFieldErrors().stream()
+                .map(err -> err.getField() + " " + err.getDefaultMessage())
+                .collect(Collectors.joining(", "));
 
         log.warn("Validation error: {}", message);
 
+        return build(HttpStatus.BAD_REQUEST, "Validation Error", message, request);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiError handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+        String message = "Invalid value for parameter '" + ex.getName() + "'";
+        log.warn("Type mismatch: {}", message);
         return build(HttpStatus.BAD_REQUEST, "Validation Error", message, request);
     }
 
@@ -92,6 +103,19 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public ApiError handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
         return build(HttpStatus.FORBIDDEN, "Access Denied", ex, request);
+    }
+
+    @ExceptionHandler(FileDeletionException.class)
+    @ResponseStatus(HttpStatus.BAD_GATEWAY)
+    public ApiError handleFileUploadException(FileDeletionException ex, HttpServletRequest request) {
+        log.error("File deletion error: {}", ex.getMessage());
+        return build(HttpStatus.BAD_GATEWAY, "File Deletion Error", ex, request);
+    }
+
+    @ExceptionHandler(FileUploadException.class)
+    public ApiError handleUpload(FileUploadException ex, HttpServletRequest request) {
+        log.error("File upload error: {}", ex.getMessage());
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, "File upload Error", ex, request);
     }
 
     // ======================
