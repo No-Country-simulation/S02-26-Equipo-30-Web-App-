@@ -101,7 +101,10 @@ public class HorseServiceImpl implements HorseService {
     // ============================
     @Override
     public List<HorseResponse> getMyHorses(User domainUser) {
-        return horseRepository.findAllByOwner(domainUser);
+        return horseRepository.findAllByOwner(domainUser)
+                .stream()
+                .map(horseMapper::toDto)
+                .toList();
     }
 
     // ============================
