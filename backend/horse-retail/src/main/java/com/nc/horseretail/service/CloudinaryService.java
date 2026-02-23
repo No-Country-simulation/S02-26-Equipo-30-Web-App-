@@ -1,31 +1,10 @@
 package com.nc.horseretail.service;
 
-
-import com.cloudinary.Cloudinary;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import com.nc.horseretail.model.media.CloudinaryUploadResult;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.util.Map;
+public interface CloudinaryService {
+    CloudinaryUploadResult upload(MultipartFile file, String folder);
 
-@Service
-@RequiredArgsConstructor
-public class CloudinaryService {
-
-    private final Cloudinary cloudinary;
-
-    public String uploadFile(MultipartFile file) {
-        try {
-            Map uploadResult = cloudinary.uploader().upload(
-                    file.getBytes(),
-                    Map.of()
-            );
-
-            return uploadResult.get("secure_url").toString();
-
-        } catch (IOException e) {
-            throw new RuntimeException("Error uploading file to Cloudinary", e);
-        }
-    }
+    void delete(String publicId);
 }

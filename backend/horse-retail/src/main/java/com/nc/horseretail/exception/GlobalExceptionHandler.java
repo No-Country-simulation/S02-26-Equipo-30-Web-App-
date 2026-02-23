@@ -41,7 +41,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiError handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
-        String message = ex.getBindingResult().getFieldErrors().stream().map(err -> err.getField() + " " + err.getDefaultMessage()).collect(Collectors.joining(", "));
+        String message = ex.getBindingResult().getFieldErrors().stream()
+                .map(err -> err.getField() + " " + err.getDefaultMessage())
+                .collect(Collectors.joining(", "));
 
         log.warn("Validation error: {}", message);
 
@@ -101,6 +103,19 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public ApiError handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
         return build(HttpStatus.FORBIDDEN, "Access Denied", ex, request);
+    }
+
+    @ExceptionHandler(FileDeletionException.class)
+    @ResponseStatus(HttpStatus.BAD_GATEWAY)
+    public ApiError handleFileUploadException(FileDeletionException ex, HttpServletRequest request) {
+        log.error("File deletion error: {}", ex.getMessage());
+        return build(HttpStatus.BAD_GATEWAY, "File Deletion Error", ex, request);
+    }
+
+    @ExceptionHandler(FileUploadException.class)
+    public ApiError handleUpload(FileUploadException ex, HttpServletRequest request) {
+        log.error("File upload error: {}", ex.getMessage());
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, "File upload Error", ex, request);
     }
 
     // ======================

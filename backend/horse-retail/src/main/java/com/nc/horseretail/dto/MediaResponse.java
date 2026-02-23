@@ -1,9 +1,7 @@
-
 package com.nc.horseretail.dto;
 
 import com.nc.horseretail.model.media.MediaType;
 import lombok.Builder;
-import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -14,7 +12,7 @@ import java.util.UUID;
 @Setter
 @Builder
 public class MediaResponse {
-    
+
     private UUID id;
     private String url;
     private MediaType mediaType;
