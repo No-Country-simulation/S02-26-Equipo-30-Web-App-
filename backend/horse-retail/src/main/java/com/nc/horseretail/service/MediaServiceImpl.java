@@ -1,75 +1,135 @@
-
 package com.nc.horseretail.service;
 
 import com.nc.horseretail.dto.MediaResponse;
 import com.nc.horseretail.dto.MediaUploadRequest;
+import com.nc.horseretail.mapper.MediaMapper;
 import com.nc.horseretail.model.horse.Horse;
-import com.nc.horseretail.model.media.MediaAsset;
-import com.nc.horseretail.repository.MediaAssetRepository;
+import com.nc.horseretail.model.media.*;
+import com.nc.horseretail.model.user.User;
 import com.nc.horseretail.repository.HorseRepository;
+import com.nc.horseretail.repository.MediaAssetRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import java.time.LocalDate;
-import com.nc.horseretail.model.media.MediaType;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class MediaServiceImpl implements MediaService {
 
-    private final MediaAssetRepository mediaAssetRepository;
+    private final MediaAssetRepository mediaRepository;
     private final HorseRepository horseRepository;
     private final CloudinaryService cloudinaryService;
-    
+    private final MediaMapper mediaMapper;
+
+    // ==========================================================
+    // UPLOAD MEDIA
+    // ==========================================================
+
     @Override
-    public MediaResponse uploadMedia(
-        MultipartFile file,
-        UUID horseId,
-        String mediaType,
-        String captureDate,
-        String context,
-        boolean unedited
-) {
+    public MediaResponse uploadMedia(MultipartFile file, MediaUploadRequest request, User uploadedBy) {
 
-    Horse horse = horseRepository.findById(horseId)
-            .orElseThrow(() -> new RuntimeException("Horse not found"));
+        validateFile(file);
 
-    String fileUrl = cloudinaryService.uploadFile(file);
+        Horse horse = horseRepository.findById(request.getHorseId()).orElseThrow(
+                () -> new EntityNotFoundException("Horse not found"));
 
-    MediaAsset media = MediaAsset.builder()
-            .horse(horse)
-            .url(fileUrl)
-            .mediaType(Enum.valueOf(MediaType.class, mediaType))
-            .captureDate(LocalDate.parse(captureDate))
-            .context(context)
-            .unedited(unedited)
-            .build();
+        CloudinaryUploadResult uploadResult = cloudinaryService.upload(file, "horses");
 
-    MediaAsset saved = mediaAssetRepository.save(media);
+        MediaAsset media = MediaAsset.builder()
+                .url(uploadResult.getUrl())
+                .publicId(uploadResult.getPublicId())
+                .mediaType(MediaType.valueOf(request.getMediaType()))
+                .category(MediaCategory.valueOf(request.getCategory()))
+                .visibility(MediaVisibility.valueOf(request.getVisibility()))
+                .horse(horse)
+                .uploadedBy(uploadedBy)
+                .captureDate(request.getCaptureDate())
+                .context(request.getContext())
+                .unedited(request.isUnedited())
+                .build();
 
-    return mapToResponse(saved);
-}
-    
-    @Override
-    public List<MediaResponse> getMediaByHorse(UUID horseId) {
-        return mediaAssetRepository.findByHorseId(horseId)
-                .stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+        MediaAsset saved = mediaRepository.save(media);
+
+        return mediaMapper.toResponse(saved);
     }
 
-    private MediaResponse mapToResponse(MediaAsset media) {
-        return MediaResponse.builder()
-                .id(media.getId())
-                .url(media.getUrl())
-                .mediaType(media.getMediaType())
-                .captureDate(media.getCaptureDate())
-                .context(media.getContext())
-                .unedited(media.isUnedited())
-                .build();
+    // ==========================================================
+    // DELETE MEDIA
+    // ==========================================================
+
+    @Override
+    public void deleteMedia(UUID mediaId) {
+
+        MediaAsset media = mediaRepository.findById(mediaId).orElseThrow(
+                () -> new EntityNotFoundException("Media not found"));
+
+        cloudinaryService.delete(media.getPublicId());
+
+        mediaRepository.delete(media);
+    }
+
+    // ==========================================================
+    // GET BY ID
+    // ==========================================================
+
+    @Override
+    @Transactional(readOnly = true)
+    public MediaResponse getMedia(UUID mediaId) {
+
+        MediaAsset media = mediaRepository.findById(mediaId).orElseThrow(
+                () -> new EntityNotFoundException("Media not found"));
+
+        return mediaMapper.toResponse(media);
+    }
+
+    // ==========================================================
+    // GET BY HORSE (PUBLIC ONLY)
+    // ==========================================================
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MediaResponse> getMediaByHorse(UUID horseId) {
+
+        return mediaRepository.findByHorseId(horseId).stream()
+                .filter(media -> media.getVisibility() == MediaVisibility.PUBLIC)
+                .map(mediaMapper::toResponse).toList();
+    }
+
+    // ==========================================================
+    // GET BY LISTING
+    // ==========================================================
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MediaResponse> getMediaByListing(UUID listingId) {
+
+        List<MediaAsset> mediaList = mediaRepository.findByListingId(listingId);
+
+        return mediaList.stream().filter(media -> media.getVisibility() == MediaVisibility.PUBLIC)
+                .map(mediaMapper::toResponse).toList();
+    }
+
+
+    // ==========================================================
+    // PRIVATE HELPERS
+    // ==========================================================
+
+    private void validateFile(MultipartFile file) {
+
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("File cannot be empty");
+        }
+
+        long maxSize = 10 * 1024 * 1024L; // 10MB
+
+        if (file.getSize() > maxSize) {
+            throw new IllegalArgumentException("File exceeds maximum size of 10MB");
+        }
     }
 }
