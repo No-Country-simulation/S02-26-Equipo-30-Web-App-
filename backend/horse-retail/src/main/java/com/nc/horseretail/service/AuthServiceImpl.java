@@ -24,6 +24,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
@@ -44,6 +45,7 @@ public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
@@ -159,6 +161,7 @@ public class AuthServiceImpl implements AuthService {
     // ============================
 
     @Override
+    @Transactional
     public void forgotPassword(String email) {
 
         Optional<User> userOptional = userRepository.findByEmail(email);
@@ -181,9 +184,9 @@ public class AuthServiceImpl implements AuthService {
 
         passwordResetTokenRepository.save(resetToken);
 
-        log.info("Password reset token generated for user {}", user.getEmail());
+        emailService.sendPasswordResetEmail(user.getEmail(), token);
 
-        //TODO  emailService.sendResetPasswordEmail(...)
+        log.info("Password reset token generated for user {}", user.getEmail());
     }
 
     // ============================
@@ -191,6 +194,7 @@ public class AuthServiceImpl implements AuthService {
     // ============================
 
     @Override
+    @Transactional
     public void resetPassword(ResetPasswordRequest request) {
 
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
