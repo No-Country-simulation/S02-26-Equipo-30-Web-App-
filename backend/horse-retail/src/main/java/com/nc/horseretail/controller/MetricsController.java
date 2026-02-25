@@ -125,10 +125,15 @@ public class MetricsController {
     )
     @ApiResponse(responseCode = "201", description = "Feedback submitted successfully")
     @ApiResponse(responseCode = "401", description = "Unauthorized")
+    @PreAuthorize("isAuthenticated()")
     @PostMapping("/feedback")
     public ResponseEntity<Void> submitFeedback(
             @Valid @RequestBody FeedbackRequest request,
             @AuthenticationPrincipal SecurityUser securityUser) {
+
+        if (securityUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
         log.info("Feedback submitted by user {}", securityUser.getUsername());
 
