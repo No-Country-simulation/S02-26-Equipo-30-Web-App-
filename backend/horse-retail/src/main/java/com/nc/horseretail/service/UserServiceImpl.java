@@ -5,7 +5,9 @@ import com.nc.horseretail.dto.auth.PasswordUpdateRequest;
 import com.nc.horseretail.dto.horse.HorseResponse;
 import com.nc.horseretail.exception.BusinessException;
 import com.nc.horseretail.exception.ResourceNotFoundException;
+import com.nc.horseretail.mapper.HorseMapper;
 import com.nc.horseretail.mapper.UserMapper;
+import com.nc.horseretail.model.horse.Horse;
 import com.nc.horseretail.model.listing.ListingStatus;
 import com.nc.horseretail.model.user.Role;
 import com.nc.horseretail.model.user.User;
@@ -19,8 +21,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +37,7 @@ public class UserServiceImpl implements UserService {
     private final ListingRepository listingRepository;
     private final HorseRepository horseRepository;
     private final PasswordEncoder passwordEncoder;
+    private final HorseMapper horseMapper;
 
     // ============================
     // ADMIN - GET ALL USERS
@@ -160,19 +166,6 @@ public class UserServiceImpl implements UserService {
                 .map(userMapper::toHorseDto);
     }
 
-
-    @Override
-    public void banUser(UUID userId) {
-//TODO implement method
-        throw new BusinessException("Method not implemented yet");
-    }
-
-    @Override
-    public void unbanUser(UUID userId) {
-//TODO implement method
-        throw new BusinessException("Method not implemented yet");
-    }
-
     @Override
     public UserResponse getUserById(UUID userId) {
             User user = findUserOrThrow(userId);
@@ -247,6 +240,36 @@ public class UserServiceImpl implements UserService {
         log.warn("Admin deleted user {}", user.getUsername());
     }
 
+
+    @Override
+    public void addFavoriteHorse(UUID userId, UUID horseId) {
+
+        User user = findUserOrThrow(userId);
+
+        Horse horse = findHorseOrThrow(horseId);
+
+        user.getFavoriteHorses().add(horse);
+    }
+
+    @Override
+    public void removeFavoriteHorse(UUID userId, UUID horseId) {
+
+        User user = findUserOrThrow(userId);
+
+        Horse horse = findHorseOrThrow(horseId);
+
+        user.getFavoriteHorses().remove(horse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<HorseResponse> getFavoriteHorses(UUID userId) {
+
+        User user = findUserOrThrow(userId);
+
+        return user.getFavoriteHorses().stream().map(horseMapper::toDto).collect(Collectors.toSet());
+    }
+
     // ============================
     // PRIVATE HELPERS
     // ============================
@@ -256,6 +279,12 @@ public class UserServiceImpl implements UserService {
         return userRepository.findById(id)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("User not found with id: " + id));
+    }
+
+    private Horse findHorseOrThrow(UUID id) {
+        return horseRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Horse not found with id: " + id));
     }
 
     private User findVisibleUser(UUID id) {

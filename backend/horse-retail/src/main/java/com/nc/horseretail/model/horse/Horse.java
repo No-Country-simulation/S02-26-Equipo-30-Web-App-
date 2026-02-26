@@ -6,6 +6,8 @@ import lombok.*;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -67,4 +69,7 @@ public class Horse {
     private Instant trustScoreUpdatedAt;
 
     private String trustModelVersion;
+
+    @ManyToMany(mappedBy = "favoriteHorses")
+    private Set<User> favoredByUsers = new HashSet<>();
 }
