@@ -93,12 +93,16 @@ public class AuthController {
     // ============================
 
     @Operation(summary = "Logout user", description = "Invalidates refresh token")
-    @ApiResponse(responseCode = "200", description = "Logged out successfully")
+    @ApiResponse(responseCode = "204", description = "Logged out successfully")
+    @ApiResponse(responseCode = "401", description = "Unauthorized")
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@AuthenticationPrincipal SecurityUser securityUser) {
+        if (securityUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
         authService.logout(securityUser.getDomainUser());
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 }
