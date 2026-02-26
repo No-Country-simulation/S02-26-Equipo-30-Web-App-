@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.UUID;
 
+@SuppressWarnings("unused")
 @Component("mediaSecurity")
 @RequiredArgsConstructor
 public class MediaSecurity {
