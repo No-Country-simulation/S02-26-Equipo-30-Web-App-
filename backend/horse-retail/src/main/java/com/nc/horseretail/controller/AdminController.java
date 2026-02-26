@@ -91,7 +91,7 @@ public class AdminController {
             @Parameter(description = "User unique identifier", required = true)
             @PathVariable UUID userId
     ) {
-        userService.banUser(userId);
+        userService.updateUserStatus(userId, com.nc.horseretail.model.user.UserStatus.SUSPENDED);
         return ResponseEntity.noContent().build();
     }
 
@@ -109,7 +109,7 @@ public class AdminController {
             @Parameter(description = "User unique identifier", required = true)
             @PathVariable UUID userId
     ) {
-        userService.unbanUser(userId);
+        userService.updateUserStatus(userId, com.nc.horseretail.model.user.UserStatus.ACTIVE);
         return ResponseEntity.noContent().build();
     }
 
