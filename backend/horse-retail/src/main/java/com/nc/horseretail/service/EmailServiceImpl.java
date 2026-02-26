@@ -57,6 +57,35 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
+    @Override
+    public void sendEmailVerificationCode(String recipientEmail, String code) {
+
+        if (!mailEnabled) {
+            log.info("Mail disabled. Verification code for {}: {}", recipientEmail, code);
+            return;
+        }
+
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromAddress);
+            message.setTo(recipientEmail);
+            message.setSubject("Horse Trust - Email Verification Code");
+            message.setText("""
+                    Welcome to Horse Trust.
+
+                    Your verification code is:
+                    %s
+
+                    This code expires in 10 minutes.
+                    If you did not create this account, you can ignore this email.
+                    """.formatted(code));
+
+            mailSender.send(message);
+        } catch (Exception exception) {
+            throw new ExternalServiceException("Failed to send email verification code");
+        }
+    }
+
     private String buildResetLink(String token) {
         String encodedToken = URLEncoder.encode(token, StandardCharsets.UTF_8);
         return resetPasswordBaseUrl + "?token=" + encodedToken;
