@@ -5,25 +5,30 @@ import com.nc.horseretail.dto.auth.AuthRequest;
 import com.nc.horseretail.dto.auth.AuthResponse;
 import com.nc.horseretail.dto.auth.RegisterRequest;
 import com.nc.horseretail.dto.auth.ResetPasswordRequest;
+import com.nc.horseretail.dto.auth.VerifyEmailRequest;
 import com.nc.horseretail.exception.BusinessException;
 import com.nc.horseretail.exception.EmailAlreadyExistException;
 import com.nc.horseretail.exception.InvalidCredentialException;
+import com.nc.horseretail.model.auth.EmailVerificationToken;
 import com.nc.horseretail.model.auth.PasswordResetToken;
 import com.nc.horseretail.model.user.Role;
 import com.nc.horseretail.model.user.User;
 import com.nc.horseretail.model.user.UserStatus;
+import com.nc.horseretail.repository.EmailVerificationTokenRepository;
 import com.nc.horseretail.repository.PasswordResetTokenRepository;
 import com.nc.horseretail.repository.UserRepository;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
@@ -31,6 +36,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.UUID;
 
 
@@ -41,18 +47,24 @@ public class AuthServiceImpl implements AuthService {
 
     private static final String ROLES = "roles";
     private static final String ROLE_PREFIX = "ROLE_";
+    private static final int VERIFICATION_CODE_DIGITS = 6;
 
     private final UserRepository userRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final EmailVerificationTokenRepository emailVerificationTokenRepository;
+    private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    @Value("${app.email-verification.code-ttl-minutes:10}")
+    private long verificationCodeTtlMinutes;
 
     // ============================
     // REGISTER
     // ============================
 
     @Override
+    @Transactional
     public AuthResponse register(RegisterRequest request) {
 
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -69,15 +81,23 @@ public class AuthServiceImpl implements AuthService {
                 .build();
 
         userRepository.save(user);
+        user.setAccountEnabled(false);
+        user.setEmailVerified(false);
+        userRepository.save(user);
 
-        var claims = buildClaims(user);
-
-        String accessToken = jwtService.generateToken(claims, user);
-        String refreshToken = jwtService.generateRefreshToken(user);
+        emailVerificationTokenRepository.deleteByUser(user);
+        String verificationCode = generateVerificationCode();
+        EmailVerificationToken verificationToken = EmailVerificationToken.builder()
+                .code(verificationCode)
+                .user(user)
+                .expiryDate(Instant.now().plus(verificationCodeTtlMinutes, ChronoUnit.MINUTES))
+                .build();
+        emailVerificationTokenRepository.save(verificationToken);
+        emailService.sendEmailVerificationCode(user.getEmail(), verificationCode);
 
         return AuthResponse.builder()
-                .token(accessToken)
-                .refreshToken(refreshToken)
+                .emailVerificationRequired(true)
+                .message("Verification code sent to your email")
                 .build();
     }
 
@@ -104,6 +124,9 @@ public class AuthServiceImpl implements AuthService {
 
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new InvalidCredentialException("Account is not active");
+        }
+        if (!user.isEmailVerified() || !user.isAccountEnabled()) {
+            throw new InvalidCredentialException("Email is not verified");
         }
 
         var claims = buildClaims(user);
@@ -142,6 +165,9 @@ public class AuthServiceImpl implements AuthService {
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Account inactive");
         }
+        if (!user.isEmailVerified() || !user.isAccountEnabled()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Email is not verified");
+        }
 
         var claims = buildClaims(user);
 
@@ -155,10 +181,48 @@ public class AuthServiceImpl implements AuthService {
     }
 
     // ============================
+    // VERIFY EMAIL
+    // ============================
+
+    @Override
+    @Transactional
+    public AuthResponse verifyEmail(VerifyEmailRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new BusinessException("Invalid or expired verification code"));
+
+        EmailVerificationToken verificationToken = emailVerificationTokenRepository
+                .findTopByUserAndCodeOrderByCreatedAtDesc(user, request.getCode())
+                .orElseThrow(() -> new BusinessException("Invalid or expired verification code"));
+
+        if (!verificationToken.isValid()) {
+            throw new BusinessException("Invalid or expired verification code");
+        }
+
+        verificationToken.setUsed(true);
+        emailVerificationTokenRepository.save(verificationToken);
+        emailVerificationTokenRepository.deleteByUser(user);
+
+        user.setEmailVerified(true);
+        user.setAccountEnabled(true);
+        userRepository.save(user);
+
+        var claims = buildClaims(user);
+        String accessToken = jwtService.generateToken(claims, user);
+        String refreshToken = jwtService.generateRefreshToken(user);
+
+        return AuthResponse.builder()
+                .token(accessToken)
+                .refreshToken(refreshToken)
+                .message("Email verified successfully")
+                .build();
+    }
+
+    // ============================
     // FORGOT PASSWORD
     // ============================
 
     @Override
+    @Transactional
     public void forgotPassword(String email) {
 
         Optional<User> userOptional = userRepository.findByEmail(email);
@@ -181,9 +245,9 @@ public class AuthServiceImpl implements AuthService {
 
         passwordResetTokenRepository.save(resetToken);
 
-        log.info("Password reset token generated for user {}", user.getEmail());
+        emailService.sendPasswordResetEmail(user.getEmail(), token);
 
-        //TODO  emailService.sendResetPasswordEmail(...)
+        log.info("Password reset token generated for user {}", user.getEmail());
     }
 
     // ============================
@@ -191,6 +255,7 @@ public class AuthServiceImpl implements AuthService {
     // ============================
 
     @Override
+    @Transactional
     public void resetPassword(ResetPasswordRequest request) {
 
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
@@ -239,5 +304,11 @@ public class AuthServiceImpl implements AuthService {
         return Map.of(
                 ROLES, List.of(ROLE_PREFIX + user.getRole().name())
         );
+    }
+
+    private String generateVerificationCode() {
+        int bound = (int) Math.pow(10, VERIFICATION_CODE_DIGITS);
+        int code = ThreadLocalRandom.current().nextInt(bound);
+        return String.format("%0" + VERIFICATION_CODE_DIGITS + "d", code);
     }
 }

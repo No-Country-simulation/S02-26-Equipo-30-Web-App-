@@ -1,10 +1,9 @@
-
-
 package com.nc.horseretail.dto;
-import com.nc.horseretail.model.media.MediaType;
-import lombok.Data;
+
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -14,9 +13,20 @@ import java.util.UUID;
 public class MediaUploadRequest {
 
     private UUID horseId;
-    private String url;
-    private MediaType mediaType;
+
+    @NotBlank
+    private String mediaType;
+
+    @NotBlank
+    private String category;
+
+    @NotBlank
+    private String visibility;
+
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate captureDate;
+
     private String context;
+
     private boolean unedited;
 }

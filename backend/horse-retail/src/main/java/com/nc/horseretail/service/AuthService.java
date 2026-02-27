@@ -4,6 +4,7 @@ import com.nc.horseretail.dto.auth.AuthRequest;
 import com.nc.horseretail.dto.auth.AuthResponse;
 import com.nc.horseretail.dto.auth.RegisterRequest;
 import com.nc.horseretail.dto.auth.ResetPasswordRequest;
+import com.nc.horseretail.dto.auth.VerifyEmailRequest;
 import com.nc.horseretail.model.user.User;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -16,6 +17,8 @@ public interface AuthService {
     AuthResponse authenticate(AuthRequest request);
 
     AuthResponse refreshToken(String refreshToken);
+
+    AuthResponse verifyEmail(VerifyEmailRequest request);
 
     void resetPassword(ResetPasswordRequest request);
 

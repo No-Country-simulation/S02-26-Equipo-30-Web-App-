@@ -1,10 +1,13 @@
 package com.nc.horseretail.model.user;
 
+import com.nc.horseretail.model.horse.Horse;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -50,6 +53,14 @@ public class User implements Serializable {
 
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
+
+    @ManyToMany
+    @JoinTable(
+            name = "user_favorite_horses",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "horse_id")
+    )
+    private Set<Horse> favoriteHorses = new HashSet<>();
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

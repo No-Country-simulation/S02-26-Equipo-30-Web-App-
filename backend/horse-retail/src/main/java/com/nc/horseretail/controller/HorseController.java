@@ -3,6 +3,7 @@ package com.nc.horseretail.controller;
 import com.nc.horseretail.config.SecurityUser;
 import com.nc.horseretail.dto.horse.HorseRequest;
 import com.nc.horseretail.dto.horse.HorseResponse;
+import com.nc.horseretail.model.horse.MainUse;
 import com.nc.horseretail.service.HorseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -54,9 +55,10 @@ public class HorseController {
     @GetMapping
     public ResponseEntity<Page<HorseResponse>> getHorses(
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) MainUse mainUse,
             Pageable pageable) {
         return ResponseEntity.ok(
-                horseService.getHorses(keyword, pageable)
+                horseService.getHorses(keyword, mainUse, pageable)
         );
     }
 
