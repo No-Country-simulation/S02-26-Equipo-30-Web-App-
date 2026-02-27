@@ -30,9 +30,9 @@ public class CsvImportRunner implements ApplicationRunner {
                     User.builder()
                             .fullName("Developer User")
                             .email("user@test.com")
-                            .username("dev01")
+                            .username("user@test.com")
                             .passwordHash(passwordEncoder.encode("112233"))
-                            .role(Role.USER)
+                            .role(Role.ADMIN)
                             .build()
             );
         }

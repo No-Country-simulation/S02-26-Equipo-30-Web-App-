@@ -3,12 +3,14 @@ package com.nc.horseretail.service;
 import com.nc.horseretail.dto.*;
 import com.nc.horseretail.dto.auth.PasswordUpdateRequest;
 import com.nc.horseretail.dto.horse.HorseResponse;
+import com.nc.horseretail.model.horse.Horse;
 import com.nc.horseretail.model.user.Role;
 import com.nc.horseretail.model.user.User;
 import com.nc.horseretail.model.user.UserStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.Set;
 import java.util.UUID;
 
 public interface UserService {
@@ -35,9 +37,11 @@ public interface UserService {
 
     Page<HorseResponse> getUserHorses(UUID userId, Pageable pageable);
 
-    void banUser(UUID userId);
-
-    void unbanUser(UUID userId);
-
     UserResponse getUserById(UUID userId);
+
+    void addFavoriteHorse(UUID userId, UUID horseId);
+
+    void removeFavoriteHorse(UUID userId, UUID horseId);
+
+    Set<HorseResponse> getFavoriteHorses(UUID userId);
 }
