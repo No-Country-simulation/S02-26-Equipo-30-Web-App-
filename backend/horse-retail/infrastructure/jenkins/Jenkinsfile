@@ -1,7 +1,7 @@
 def deployApp(Map config) {
     def composeFile = config.composeFile ?: 'docker-compose.yml'
 
-    // 1. Map Credential IDs for VM and DockerHub
+    // 1. Map Credential IDs for VM, app secrets and DockerHub
     def creds = [
         sshUserPrivateKey(credentialsId: config.sshKeyCredentialId, keyFileVariable: 'SSH_KEY'),
         string(credentialsId: config.vmHostCredentialId, variable: 'VM_HOST'),
@@ -9,15 +9,17 @@ def deployApp(Map config) {
         string(credentialsId: config.dbPasswordCredentialId, variable: 'POSTGRES_PASSWORD'),
         string(credentialsId: config.dbUrlCredentialId, variable: 'POSTGRES_DOCKER_URL'),
         string(credentialsId: config.secretKeyCredentialId, variable: 'SECRET_KEY'),
+        string(credentialsId: config.cloudinaryCloudNameCredentialId, variable: 'CLOUDINARY_CLOUD_NAME'),
+        string(credentialsId: config.cloudinaryApiKeyCredentialId, variable: 'CLOUDINARY_API_KEY'),
+        string(credentialsId: config.cloudinaryApiSecretCredentialId, variable: 'CLOUDINARY_API_SECRET'),
+        string(credentialsId: config.mailUsernameCredentialId, variable: 'MAIL_USERNAME'),
+        string(credentialsId: config.mailPasswordCredentialId, variable: 'MAIL_PASSWORD'),
         usernamePassword(credentialsId: config.dockerCredentialId, usernameVariable: 'DUSER', passwordVariable: 'DPASS')
     ]
 
     withCredentials(creds) {
          def imageTag = config.imageTag
          def fullBackendImage = "edydockers/backend-horsetrust:${imageTag}"
-
-         // HARDCODED DB NAME: Solves the credential value vs name mismatch permanently
-         def dbToUse = "HorseTrustDb1"
 
          def clean = { v ->
             if (v == null) return ''
@@ -28,19 +30,41 @@ def deployApp(Map config) {
             return s
          }
 
-         // 2. Build .env with Proxy and Swagger visibility fixes
+         def dbToUse = clean(RAW_DB_NAME) ?: "HorseTrustDb1"
+         def dbUrlToUse = clean(POSTGRES_DOCKER_URL) ?: "jdbc:postgresql://database:5432/${dbToUse}"
+
+         // 2. Build .env for docker-compose deployment
          def envLines = []
          envLines << "BACKEND_IMAGE=${fullBackendImage}"
          envLines << "POSTGRES_DB=${dbToUse}"
+         envLines << "POSTGRES_USER=postgres"
          envLines << "POSTGRES_PASSWORD=${clean(POSTGRES_PASSWORD)}"
-         envLines << "SPRING_DATASOURCE_URL=jdbc:postgresql://database:5432/${dbToUse}"
+         envLines << "POSTGRES_DOCKER_URL=${dbUrlToUse}"
+         envLines << "SPRING_DATASOURCE_URL=${dbUrlToUse}"
+         envLines << "SPRING_DATASOURCE_USERNAME=postgres"
+         envLines << "SPRING_DATASOURCE_PASSWORD=${clean(POSTGRES_PASSWORD)}"
          envLines << "SECRET_KEY=${clean(SECRET_KEY)}"
+         envLines << "SPRING_PROFILES_ACTIVE=prod"
+         envLines << "SPRING_PROFILE=prod"
          envLines << "SPRINGDOC_SWAGGER_UI_ENABLED=true"
          envLines << "SPRINGDOC_API_DOCS_ENABLED=true"
+         envLines << "SPRINGDOC_API_DOCS_PATH=/v3/api-docs"
          envLines << "SERVER_FORWARD_HEADERS_STRATEGY=framework"
-         envLines << "SPRINGDOC_CONFIG_PATH=/v3/api-docs"
-         envLines << "SPRINGDOC_SWAGGER-UI_CONFIG-URL=/v3/api-docs/swagger-config"
+         envLines << "SPRINGDOC_SWAGGER_UI_CONFIG_URL=/v3/api-docs/swagger-config"
          envLines << "SPRINGDOC_SWAGGER_UI_URL=/v3/api-docs"
+         envLines << "CLOUDINARY_CLOUD_NAME=${clean(CLOUDINARY_CLOUD_NAME)}"
+         envLines << "CLOUDINARY_API_KEY=${clean(CLOUDINARY_API_KEY)}"
+         envLines << "CLOUDINARY_API_SECRET=${clean(CLOUDINARY_API_SECRET)}"
+         envLines << "MAIL_ENABLED=true"
+         envLines << "MAIL_FROM=horsetrustn1@gmail.com"
+         envLines << "RESET_PASSWORD_BASE_URL=https://horsetrust.codershub.top/reset-password"
+         envLines << "MAIL_HOST=smtp.gmail.com"
+         envLines << "MAIL_PORT=587"
+         envLines << "MAIL_USERNAME=${clean(MAIL_USERNAME)}"
+         envLines << "MAIL_PASSWORD=${clean(MAIL_PASSWORD)}"
+         envLines << "MAIL_SMTP_AUTH=true"
+         envLines << "MAIL_SMTP_STARTTLS_ENABLE=true"
+         envLines << "EMAIL_VERIFICATION_CODE_TTL_MINUTES=10"
 
          writeFile file: 'remote.env', text: envLines.join('\n')
 
@@ -124,6 +148,11 @@ pipeline {
                         dbPasswordCredentialId: 'horsetrust-db-pass',
                         dbUrlCredentialId: 'horsetrust-db-url',
                         secretKeyCredentialId: 'horsetrust-secret-key',
+                        cloudinaryCloudNameCredentialId: 'horsetrust-cloudinary-cloud-name',
+                        cloudinaryApiKeyCredentialId: 'horsetrust-cloudinary-api-key',
+                        cloudinaryApiSecretCredentialId: 'horsetrust-cloudinary-api-secret',
+                        mailUsernameCredentialId: 'horsetrust-mail-username',
+                        mailPasswordCredentialId: 'horsetrust-mail-password',
                         dockerCredentialId: env.DOCKERHUB_CRED
                     )
                  }
