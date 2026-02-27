@@ -27,7 +27,7 @@ public class User implements Serializable {
     private String externalId;
 
     @Column(name = "username", nullable = false, unique = true)
-    private String username;
+    private String username; //TODO check if we need username or just email as login
 
     @Column(name = "full_name", nullable = false)
     private String fullName;
@@ -60,7 +60,7 @@ public class User implements Serializable {
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "horse_id")
     )
-    private Set<Horse> favoriteHorses = new HashSet<>();
+    private Set<Horse> favoriteHorses = new HashSet<>(); //Todo check implementation
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
