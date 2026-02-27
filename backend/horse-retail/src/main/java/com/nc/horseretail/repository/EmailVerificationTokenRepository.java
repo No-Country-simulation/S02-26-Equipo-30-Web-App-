@@ -1,6 +1,6 @@
 package com.nc.horseretail.repository;
 
-import com.nc.horseretail.model.auth.PasswordResetToken;
+import com.nc.horseretail.model.auth.EmailVerificationToken;
 import com.nc.horseretail.model.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -10,9 +10,9 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface PasswordResetTokenRepository extends JpaRepository<PasswordResetToken, UUID> {
+public interface EmailVerificationTokenRepository extends JpaRepository<EmailVerificationToken, UUID> {
 
-    Optional<PasswordResetToken> findByToken(String token);
+    Optional<EmailVerificationToken> findTopByUserAndCodeOrderByCreatedAtDesc(User user, String code);
 
     @Modifying
     @Transactional

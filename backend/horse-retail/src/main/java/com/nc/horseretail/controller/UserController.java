@@ -21,6 +21,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Set;
 import java.util.UUID;
 
 @Tag(name = "User", description = "User management API")
@@ -129,6 +130,37 @@ public class UserController {
 
         return ResponseEntity.ok(
                 userService.getUserHorses(userId, pageable)
+        );
+    }
+
+    @PostMapping("/favorites/{horseId}")
+    public ResponseEntity<Void> addFavorite(
+            @PathVariable UUID horseId,
+            @AuthenticationPrincipal SecurityUser securityUser
+    ) {
+        userService.addFavoriteHorse(securityUser.getDomainUser().getId(), horseId);
+
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/favorites/{horseId}")
+    public ResponseEntity<Void> removeFavorite(
+            @PathVariable UUID horseId,
+            @AuthenticationPrincipal SecurityUser securityUser
+    ) {
+
+        userService.removeFavoriteHorse(securityUser.getDomainUser().getId(), horseId);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/favorites")
+    public ResponseEntity<Set<HorseResponse>> getFavorites(
+            @AuthenticationPrincipal SecurityUser securityUser
+    ) {
+
+        return ResponseEntity.ok(
+                userService.getFavoriteHorses(securityUser.getDomainUser().getId())
         );
     }
 
