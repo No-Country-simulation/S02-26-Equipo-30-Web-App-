@@ -5,9 +5,7 @@ def deployApp(Map config) {
     def creds = [
         sshUserPrivateKey(credentialsId: config.sshKeyCredentialId, keyFileVariable: 'SSH_KEY'),
         string(credentialsId: config.vmHostCredentialId, variable: 'VM_HOST'),
-        string(credentialsId: config.dbUserCredentialId, variable: 'RAW_DB_NAME'),
         string(credentialsId: config.dbPasswordCredentialId, variable: 'POSTGRES_PASSWORD'),
-        string(credentialsId: config.dbUrlCredentialId, variable: 'POSTGRES_DOCKER_URL'),
         string(credentialsId: config.secretKeyCredentialId, variable: 'SECRET_KEY'),
         string(credentialsId: config.cloudinaryCloudNameCredentialId, variable: 'CLOUDINARY_CLOUD_NAME'),
         string(credentialsId: config.cloudinaryApiKeyCredentialId, variable: 'CLOUDINARY_API_KEY'),
@@ -30,8 +28,9 @@ def deployApp(Map config) {
             return s
          }
 
-         def dbToUse = clean(RAW_DB_NAME) ?: "HorseTrustDb1"
-         def dbUrlToUse = clean(POSTGRES_DOCKER_URL) ?: "jdbc:postgresql://database:5432/${dbToUse}"
+         // Force a single DB target in production deployment to avoid bad credential values.
+         def dbToUse = "HorseTrustDb1"
+         def dbUrlToUse = "jdbc:postgresql://database:5432/${dbToUse}"
 
          // 2. Build .env for docker-compose deployment
          def envLines = []
@@ -73,21 +72,31 @@ def deployApp(Map config) {
          sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no backend/horse-retail/infrastructure/docker/${composeFile} jenkins@${VM_HOST}:/home/jenkins/horsetrust/docker-compose.yml"
          sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no remote.env jenkins@${VM_HOST}:/home/jenkins/horsetrust/.env"
 
-         // 4. Remote Execution: Kill Host Postgres, Wipe Docker, Force DB Creation
+         // 4. Remote execution: keep DB volume persistent and only (re)create missing DB.
          sh """
             ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no jenkins@${VM_HOST} '
                 cd /home/jenkins/horsetrust &&
                 sudo fuser -k 5432/tcp || true
                 sudo systemctl stop postgresql 2>/dev/null || true
                 sudo docker network create horse-net 2>/dev/null || true
-                sudo docker compose down -v --remove-orphans
                 echo "${DPASS}" | sudo docker login -u "${DUSER}" --password-stdin
-                sudo docker compose up -d database
-                sleep 15
-                sudo docker exec horsetrust-backend-database-1 psql -U postgres -c "CREATE DATABASE \\"${dbToUse}\\";" || true
-                sudo docker compose up -d spring
-                sleep 8
-                sudo docker restart horsetrust-backend-spring-1
+                sudo docker compose pull spring || true
+                sudo docker compose up -d --remove-orphans database
+
+                # Wait until Postgres is accepting connections before touching DB state.
+                for i in $(seq 1 30); do
+                    if sudo docker exec horsetrust-backend-database-1 pg_isready -U postgres >/dev/null 2>&1; then
+                        break
+                    fi
+                    sleep 2
+                done
+                sudo docker exec horsetrust-backend-database-1 pg_isready -U postgres >/dev/null 2>&1
+
+                DB_EXISTS=$(sudo docker exec horsetrust-backend-database-1 psql -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '${dbToUse}';")
+                if [ "$DB_EXISTS" != "1" ]; then
+                    sudo docker exec horsetrust-backend-database-1 psql -U postgres -c "CREATE DATABASE \\"${dbToUse}\\";"
+                fi
+                sudo docker compose up -d --remove-orphans spring
                 sudo docker logout'
          """
          sh 'rm -f remote.env'
@@ -144,9 +153,7 @@ pipeline {
                         vmHostCredentialId: 'vm-ip-98',
                         imageTag: "prod-${env.BUILD_NUMBER}",
                         sshKeyCredentialId: 'vm-ssh-key-98',
-                        dbUserCredentialId: 'horsetrust-db-name',
                         dbPasswordCredentialId: 'horsetrust-db-pass',
-                        dbUrlCredentialId: 'horsetrust-db-url',
                         secretKeyCredentialId: 'horsetrust-secret-key',
                         cloudinaryCloudNameCredentialId: 'horsetrust-cloudinary-cloud-name',
                         cloudinaryApiKeyCredentialId: 'horsetrust-cloudinary-api-key',

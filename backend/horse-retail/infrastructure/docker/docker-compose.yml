@@ -64,6 +64,7 @@ services:
 
 volumes:
   db_data:
+    name: horsetrust_db_data
 
 networks:
   horse-net:
