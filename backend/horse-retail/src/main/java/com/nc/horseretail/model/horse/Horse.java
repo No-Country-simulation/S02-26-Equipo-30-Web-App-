@@ -70,6 +70,10 @@ public class Horse {
 
     private String trustModelVersion;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private HorseStatus status = HorseStatus.ACTIVE;
+
     @ManyToMany(mappedBy = "favoriteHorses")
     private Set<User> favoredByUsers = new HashSet<>();
 }
