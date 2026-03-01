@@ -3,8 +3,6 @@ package com.nc.horseretail.service;
 import com.nc.horseretail.dto.horse.HorseRequest;
 import com.nc.horseretail.dto.horse.HorseResponse;
 import com.nc.horseretail.model.horse.MainUse;
-import com.nc.horseretail.model.user.User;
-import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -13,25 +11,21 @@ import java.util.UUID;
 
 public interface HorseService {
 
-    void createHorse(HorseRequest request, User owner);
+    void createHorse(HorseRequest request, UUID userId);
 
     long countTotalHorses();
 
     HorseResponse getHorseById(UUID id);
 
-    HorseResponse updateHorse(UUID id, @Valid HorseRequest request, User domainUser);
+    HorseResponse updateHorse(UUID id, HorseRequest request, UUID userId);
 
-    void deleteHorse(UUID id, User domainUser);
+    void deleteHorse(UUID id, UUID userId);
 
-    List<HorseResponse> getMyHorses(User domainUser);
+    List<HorseResponse> getMyHorses(UUID userId);
 
-    Long countMyHorses(User domainUser);
+    Long countMyHorses(UUID userId);
 
     Page<HorseResponse> getHorses(String keyword, MainUse mainUse, Pageable pageable);
-
-    default Page<HorseResponse> getHorses(String keyword, Pageable pageable) {
-        return getHorses(keyword, null, pageable);
-    }
 
     void deleteHorseByAdmin(UUID horseId);
 }
