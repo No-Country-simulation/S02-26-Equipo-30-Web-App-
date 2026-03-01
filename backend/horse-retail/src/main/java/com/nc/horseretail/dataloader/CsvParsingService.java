@@ -26,11 +26,16 @@ public class CsvParsingService {
                 BufferedReader reader = new BufferedReader(
                         new InputStreamReader(csvInputStream, StandardCharsets.UTF_8)
                 );
-                CSVParser csvParser = CSVFormat.DEFAULT
-                        .withFirstRecordAsHeader()
-                        .withIgnoreHeaderCase()
-                        .withTrim()
-                        .parse(reader)
+                CSVParser csvParser = CSVParser.parse(
+                        reader,
+                        CSVFormat.DEFAULT
+                                .builder()
+                                .setHeader()
+                                .setSkipHeaderRecord(true)
+                                .setIgnoreHeaderCase(true)
+                                .setTrim(true)
+                                .build()
+                )
         ) {
 
             for (CSVRecord csvRecord : csvParser) {
@@ -50,7 +55,6 @@ public class CsvParsingService {
                 row.setTemperament(csvRecord.get("h_temperament"));
                 row.setCategory(csvRecord.get("h_category"));
 
-                //TODO parse career and days since last to double
                 row.setCareerRaces(parseInt(csvRecord.get("h_career_races")));
                 row.setCareerTop3Rate(parseDouble(csvRecord.get("h_career_top3_rate")));
                 row.setDaysSinceLastRace(parseInt(csvRecord.get("h_days_since_last_race")));
@@ -118,7 +122,6 @@ public class CsvParsingService {
     private Integer parseInt(String value) {
         if (value == null || value.isBlank()) return null;
 
-        // TODO valor truncado, revisar si es correcto o si se debería redondear
         double d = Double.parseDouble(value);
         return (int) d;
     }
