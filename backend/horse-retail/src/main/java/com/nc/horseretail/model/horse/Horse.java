@@ -1,15 +1,17 @@
 package com.nc.horseretail.model.horse;
 
+
 import com.nc.horseretail.model.user.User;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.UUID;
 
+@SuppressWarnings("java:S1948")
 @Entity
 @Getter
 @Setter
@@ -17,7 +19,10 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @Table(name = "tbl_horses")
-public class Horse {
+public class Horse implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     @Id
     @GeneratedValue
@@ -73,7 +78,4 @@ public class Horse {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private HorseStatus status = HorseStatus.ACTIVE;
-
-    @ManyToMany(mappedBy = "favoriteHorses")
-    private Set<User> favoredByUsers = new HashSet<>();
 }

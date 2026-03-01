@@ -4,12 +4,14 @@ import com.nc.horseretail.model.horse.Horse;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
+@SuppressWarnings("java:S1948")
 @Entity
 @Table(name = "tbl_users")
 @Getter
@@ -19,6 +21,9 @@ import java.util.UUID;
 @Builder
 public class User implements Serializable {
 
+    @Serial
+    private static final long serialVersionUID = 1L;
+
     @Id
     @GeneratedValue
     private UUID id;
@@ -27,7 +32,7 @@ public class User implements Serializable {
     private String externalId;
 
     @Column(name = "username", nullable = false, unique = true)
-    private String username; //TODO check if we need username or just email as login
+    private String username;
 
     @Column(name = "full_name", nullable = false)
     private String fullName;
@@ -63,7 +68,7 @@ public class User implements Serializable {
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "horse_id")
     )
-    private Set<Horse> favoriteHorses = new HashSet<>(); //Todo check implementation
+    private Set<Horse> favoriteHorses = new HashSet<>();
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
