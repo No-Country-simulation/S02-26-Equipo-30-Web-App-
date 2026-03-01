@@ -289,7 +289,10 @@ public class AuthServiceImpl implements AuthService {
     // ============================
 
     @Override
-    public void logout(User domainUser) {
+    public void logout(UUID userId) {
+
+        User domainUser = userRepository.findById(userId)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
         // Invalidar refresh tokens persistidos
 
