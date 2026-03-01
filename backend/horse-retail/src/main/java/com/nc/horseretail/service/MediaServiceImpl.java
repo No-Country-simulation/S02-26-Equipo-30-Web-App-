@@ -2,12 +2,14 @@ package com.nc.horseretail.service;
 
 import com.nc.horseretail.dto.MediaResponse;
 import com.nc.horseretail.dto.MediaUploadRequest;
+import com.nc.horseretail.exception.ResourceNotFoundException;
 import com.nc.horseretail.mapper.MediaMapper;
 import com.nc.horseretail.model.horse.Horse;
 import com.nc.horseretail.model.media.*;
 import com.nc.horseretail.model.user.User;
 import com.nc.horseretail.repository.HorseRepository;
 import com.nc.horseretail.repository.MediaAssetRepository;
+import com.nc.horseretail.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,15 +28,19 @@ public class MediaServiceImpl implements MediaService {
     private final HorseRepository horseRepository;
     private final CloudinaryService cloudinaryService;
     private final MediaMapper mediaMapper;
+    private final UserRepository userRepository;
 
     // ==========================================================
     // UPLOAD MEDIA
     // ==========================================================
 
     @Override
-    public MediaResponse uploadMedia(MultipartFile file, MediaUploadRequest request, User uploadedBy) {
+    public MediaResponse uploadMedia(MultipartFile file, MediaUploadRequest request, UUID currentUserId) {
 
         validateFile(file);
+
+        User user = userRepository.findById(currentUserId).orElseThrow(
+                () -> new ResourceNotFoundException("User not found"));
 
         Horse horse = horseRepository.findById(request.getHorseId()).orElseThrow(
                 () -> new EntityNotFoundException("Horse not found"));
@@ -48,7 +54,7 @@ public class MediaServiceImpl implements MediaService {
                 .category(MediaCategory.valueOf(request.getCategory()))
                 .visibility(MediaVisibility.valueOf(request.getVisibility()))
                 .horse(horse)
-                .uploadedBy(uploadedBy)
+                .uploadedBy(user)
                 .captureDate(request.getCaptureDate())
                 .context(request.getContext())
                 .unedited(request.isUnedited())
