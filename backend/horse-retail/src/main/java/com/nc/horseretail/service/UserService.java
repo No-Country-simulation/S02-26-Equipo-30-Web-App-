@@ -3,9 +3,7 @@ package com.nc.horseretail.service;
 import com.nc.horseretail.dto.*;
 import com.nc.horseretail.dto.auth.PasswordUpdateRequest;
 import com.nc.horseretail.dto.horse.HorseResponse;
-import com.nc.horseretail.model.horse.Horse;
 import com.nc.horseretail.model.user.Role;
-import com.nc.horseretail.model.user.User;
 import com.nc.horseretail.model.user.UserStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,13 +15,13 @@ public interface UserService {
 
     Page<UserResponse> getAllUsers(Pageable pageable);
 
-    UserResponse getMe(User domainUser);
+    UserResponse getMe(UUID userId);
 
-    UserResponse updateMe(User domainUser, UserUpdateRequest request);
+    UserResponse updateMe(UUID userId, UserUpdateRequest request);
 
-    void changePassword(User domainUser, PasswordUpdateRequest request);
+    void changePassword(UUID userId, PasswordUpdateRequest request);
 
-    void deleteMe(User domainUser);
+    void deleteMe(UUID userId);
 
     UserResponse getUserPublicProfile(UUID userId);
 

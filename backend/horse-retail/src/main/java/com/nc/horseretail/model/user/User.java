@@ -4,12 +4,14 @@ import com.nc.horseretail.model.horse.Horse;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
+@SuppressWarnings("java:S1948")
 @Entity
 @Table(name = "tbl_users")
 @Getter
@@ -18,6 +20,9 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class User implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     @Id
     @GeneratedValue
@@ -34,6 +39,9 @@ public class User implements Serializable {
 
     @Column(name = "email", nullable = false, unique = true)
     private String email;
+
+    @Column(name = "phone_number", unique = true)
+    private String phoneNumber;
 
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;

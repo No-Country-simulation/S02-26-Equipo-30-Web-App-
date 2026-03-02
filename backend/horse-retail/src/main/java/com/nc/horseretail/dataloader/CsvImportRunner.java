@@ -5,6 +5,7 @@ import com.nc.horseretail.model.user.User;
 import com.nc.horseretail.repository.HorseRepository;
 import com.nc.horseretail.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
@@ -21,17 +22,24 @@ public class CsvImportRunner implements ApplicationRunner {
     private final CsvImportService importService;
     private final PasswordEncoder passwordEncoder;
 
+    @Value("${app.user.password}")
+    private String userPassword;
+
+    private static final String DEV_USER_EMAIL = "user@dev.com";
+
+
 
     @Override
     public void run(ApplicationArguments args) {
 
-        if (!userRepository.existsByEmail("user@test.com")) {
+        if (!userRepository.existsByEmail(DEV_USER_EMAIL)) {
             userRepository.save(
                     User.builder()
-                            .fullName("Developer User")
-                            .email("user@test.com")
-                            .username("user@test.com")
-                            .passwordHash(passwordEncoder.encode("112233"))
+                            .fullName("Dev User")
+                            .email(DEV_USER_EMAIL)
+                            .username(DEV_USER_EMAIL)
+                            .passwordHash(passwordEncoder.encode(userPassword))
+                            .emailVerified(true)
                             .role(Role.ADMIN)
                             .build()
             );
@@ -41,6 +49,6 @@ public class CsvImportRunner implements ApplicationRunner {
             return;
         }
 
-        importService.importFromClasspath("data/horsetruth_database.csv");
+        importService.importFromClasspath("data/horsetrust_database.csv");
     }
 }

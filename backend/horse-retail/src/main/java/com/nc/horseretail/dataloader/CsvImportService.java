@@ -33,6 +33,10 @@ public class CsvImportService {
     private final RiskAssessmentRepository riskRepository;
     private final ArithmeticTrustScoreService arithmeticTrustScoreService;
 
+    // ======================================================
+    // DEV IMPORT (Classpath)
+    // ======================================================
+
     @Transactional
     public void importFromClasspath(String path) {
 
@@ -41,50 +45,80 @@ public class CsvImportService {
         try (InputStream is = resource.getInputStream()) {
 
             List<HorseCsvRow> rows = csvParsingService.parse(is);
-
-            for (HorseCsvRow row : rows) {
-
-                // Skip if horse already exists
-                if (horseRepository.existsByExternalId(row.getHorseId())) {
-                    continue;
-                }
-
-                // Get or create User
-                User user = userRepository
-                        .findByExternalId(row.getSellerId())
-                        .orElseGet(() -> {
-                            User newUser = userCsvMapper.toEntity(row);
-                            return userRepository.save(newUser);
-                        });
-
-                // Create Horse
-                Horse horse = horseCsvMapper.toEntity(row, user);
-                arithmeticTrustScoreService.applyTrustScore(horse);
-                horseRepository.save(horse);
-
-                // Create Listing
-                Listing listing = listingCsvMapper.toEntity(row, horse, user);
-                listingRepository.save(listing);
-
-                // Verification
-                ListingVerificationStatus verificationStatus =
-                        listingCsvMapper.toVerificationStatus(listing, row);
-
-                verificationRepository.save(verificationStatus);
-
-                // Risk
-                RiskAssessment riskAssessment =
-                        listingCsvMapper.toRiskAssessment(listing, row);
-
-                riskRepository.save(riskAssessment);
-
-                //TODO  create vets
-            }
-
-            log.info("Successfully imported {} horses", rows.size());
+            processRows(rows);
 
         } catch (IOException e) {
+            throw new IllegalStateException("Failed to import CSV from classpath", e);
+        }
+    }
+
+    // ======================================================
+    // PROD IMPORT (Endpoint Upload)
+    // ======================================================
+
+    @Transactional
+    public void importFromInputStream(InputStream inputStream) {
+
+        try {
+
+            List<HorseCsvRow> rows = csvParsingService.parse(inputStream);
+            processRows(rows);
+
+        } catch (Exception e) {
             throw new IllegalStateException("Failed to import CSV", e);
         }
+    }
+
+    // ======================================================
+    // COMMON PROCESSING LOGIC
+    // ======================================================
+
+    private void processRows(List<HorseCsvRow> rows) {
+
+        int importedCount = 0;
+
+        for (HorseCsvRow row : rows) {
+
+            // Skip if horse already exists
+            if (horseRepository.existsByExternalId(row.getHorseId())) {
+                continue;
+            }
+
+            User user = getOrCreateUser(row);
+
+            Horse horse = horseCsvMapper.toEntity(row, user);
+            arithmeticTrustScoreService.applyTrustScore(horse);
+            horseRepository.save(horse);
+
+            Listing listing = listingCsvMapper.toEntity(row, horse, user);
+            listingRepository.save(listing);
+
+            ListingVerificationStatus verificationStatus =
+                    listingCsvMapper.toVerificationStatus(listing, row);
+            verificationRepository.save(verificationStatus);
+
+            RiskAssessment riskAssessment =
+                    listingCsvMapper.toRiskAssessment(listing, row);
+            riskRepository.save(riskAssessment);
+
+            importedCount++;
+        }
+
+        log.info("Successfully imported {} new horses ({} total rows processed)",
+                importedCount, rows.size());
+    }
+
+    // ======================================================
+    // HELPER
+    // ======================================================
+
+    private User getOrCreateUser(HorseCsvRow row) {
+
+        return userRepository
+                .findByExternalId(row.getSellerId())
+                .orElseGet(() -> {
+                    User newUser = userCsvMapper.toEntity(row);
+                    return userRepository.save(newUser);
+                });
     }
 }

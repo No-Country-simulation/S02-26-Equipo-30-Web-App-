@@ -14,6 +14,7 @@ import com.nc.horseretail.model.user.User;
 import com.nc.horseretail.repository.ConversationRepository;
 import com.nc.horseretail.repository.ListingRepository;
 import com.nc.horseretail.repository.MessageRepository;
+import com.nc.horseretail.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ public class ChatServiceImpl implements ChatService {
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
     private final ListingRepository listingRepository;
+    private final UserRepository userRepository;
 
     // =============================
     // SEND MESSAGE
@@ -37,7 +39,9 @@ public class ChatServiceImpl implements ChatService {
     @Override
     public MessageResponse sendMessage(UUID conversationId,
                                        SendMessageRequest request,
-                                       User sender) {
+                                       UUID senderId) {
+
+        User sender = getUserOrThrow(senderId);
 
         Conversation conversation = getConversationOrThrow(conversationId);
 
@@ -66,10 +70,11 @@ public class ChatServiceImpl implements ChatService {
     // CREATE CONVERSATION
     // =============================
     @Override
-    public ConversationDetailResponse createConversation(UUID listingId, User user) {
+    public ConversationDetailResponse createConversation(UUID listingId, UUID userId) {
 
-        Listing listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> new ResourceNotFoundException("Listing not found"));
+        User user = getUserOrThrow(userId);
+
+        Listing listing = getListingOrThrow(listingId);
 
         if (listing.getOwner().getId().equals(user.getId())) {
             throw new IllegalStateException("You cannot start a conversation on your own listing");
@@ -100,7 +105,9 @@ public class ChatServiceImpl implements ChatService {
     // =============================
     @Override
     @Transactional(readOnly = true)
-    public List<ConversationSummaryResponse> getUserConversations(User user) {
+    public List<ConversationSummaryResponse> getUserConversations(UUID userId) {
+
+        User user = getUserOrThrow(userId);
 
         List<Conversation> conversations =
                 conversationRepository.findUserConversations(user.getId());
@@ -130,8 +137,9 @@ public class ChatServiceImpl implements ChatService {
     // =============================
     @Override
     @Transactional(readOnly = true)
-    public ConversationDetailResponse getConversation(UUID conversationId, User user) {
+    public ConversationDetailResponse getConversation(UUID conversationId, UUID userId) {
 
+        User user = getUserOrThrow(userId);
         Conversation conversation = getConversationOrThrow(conversationId);
 
         validateAccess(conversation, user);
@@ -155,7 +163,9 @@ public class ChatServiceImpl implements ChatService {
     // =============================
     @Override
     @Transactional(readOnly = true)
-    public List<MessageResponse> getMessages(UUID conversationId, User user) {
+    public List<MessageResponse> getMessages(UUID conversationId, UUID userId) {
+
+        User user = getUserOrThrow(userId);
 
         Conversation conversation = getConversationOrThrow(conversationId);
 
@@ -171,7 +181,9 @@ public class ChatServiceImpl implements ChatService {
     // MARK AS READ
     // =============================
     @Override
-    public void markMessageAsRead(UUID messageId, User user) {
+    public void markMessageAsRead(UUID messageId, UUID userId) {
+
+        User user = getUserOrThrow(userId);
 
         Message message = messageRepository.findById(messageId)
                 .orElseThrow(() -> new ResourceNotFoundException("Message not found"));
@@ -187,7 +199,9 @@ public class ChatServiceImpl implements ChatService {
     // CLOSE CONVERSATION
     // =============================
     @Override
-    public void closeConversation(UUID conversationId, User user) {
+    public void closeConversation(UUID conversationId, UUID userId) {
+
+        User user = getUserOrThrow(userId);
 
         Conversation conversation = getConversationOrThrow(conversationId);
 
@@ -202,9 +216,8 @@ public class ChatServiceImpl implements ChatService {
     // =============================
     @Override
     @Transactional(readOnly = true)
-    public Long getUnreadCount(User user) {
-
-        return messageRepository.countUnreadMessages(user.getId());
+    public Long getUnreadCount(UUID userId) {
+        return messageRepository.countUnreadMessages(userId);
     }
 
     // =============================
@@ -214,6 +227,16 @@ public class ChatServiceImpl implements ChatService {
     private Conversation getConversationOrThrow(UUID conversationId) {
         return conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Conversation not found"));
+    }
+
+    private User getUserOrThrow(UUID userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    }
+
+    private Listing getListingOrThrow(UUID listingId) {
+        return listingRepository.findById(listingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Listing not found"));
     }
 
     private void validateAccess(Conversation conversation, User user) {

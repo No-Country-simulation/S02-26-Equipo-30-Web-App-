@@ -3,6 +3,7 @@ package com.nc.horseretail.dataloader;
 import com.nc.horseretail.model.user.Role;
 import com.nc.horseretail.model.user.User;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -11,6 +12,9 @@ import org.springframework.stereotype.Component;
 public class UserCsvMapper {
 
     private final PasswordEncoder passwordEncoder;
+
+    @Value("${app.user.password}")
+    private String defaultPassword;
 
     public User toEntity(HorseCsvRow row) {
 
@@ -35,7 +39,7 @@ public class UserCsvMapper {
                 .username(username)
                 .fullName(fullName)
                 .email(email)
-                .passwordHash(passwordEncoder.encode("123123"))
+                .passwordHash(passwordEncoder.encode(defaultPassword))
                 .role(Role.USER)
                 .emailVerified(Boolean.TRUE.equals(row.getSellerVerified()))
                 .accountEnabled(true)

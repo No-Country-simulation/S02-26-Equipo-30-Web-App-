@@ -38,7 +38,7 @@ public class ChatController {
             @AuthenticationPrincipal SecurityUser user
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(chatService.createConversation(listingId, user.getDomainUser()));
+                .body(chatService.createConversation(listingId, user.getId()));
     }
 
     // ============================
@@ -53,7 +53,7 @@ public class ChatController {
             @AuthenticationPrincipal SecurityUser user
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(chatService.sendMessage(conversationId, request, user.getDomainUser()));
+                .body(chatService.sendMessage(conversationId, request, user.getId()));
     }
 
     // ============================
@@ -65,7 +65,7 @@ public class ChatController {
             @AuthenticationPrincipal SecurityUser user
     ) {
         return ResponseEntity.ok(
-                chatService.getUserConversations(user.getDomainUser())
+                chatService.getUserConversations(user.getId())
         );
     }
 
@@ -79,7 +79,7 @@ public class ChatController {
             @AuthenticationPrincipal SecurityUser user
     ) {
         return ResponseEntity.ok(
-                chatService.getConversation(conversationId, user.getDomainUser())
+                chatService.getConversation(conversationId, user.getId())
         );
     }
 
@@ -93,7 +93,7 @@ public class ChatController {
             @AuthenticationPrincipal SecurityUser user
     ) {
         return ResponseEntity.ok(
-                chatService.getMessages(conversationId, user.getDomainUser())
+                chatService.getMessages(conversationId, user.getId())
         );
     }
 
@@ -105,7 +105,7 @@ public class ChatController {
             @PathVariable UUID messageId,
             @AuthenticationPrincipal SecurityUser user
     ) {
-        chatService.markMessageAsRead(messageId, user.getDomainUser());
+        chatService.markMessageAsRead(messageId, user.getId());
         return ResponseEntity.noContent().build();
     }
 
@@ -117,7 +117,7 @@ public class ChatController {
             @PathVariable UUID conversationId,
             @AuthenticationPrincipal SecurityUser user
     ) {
-        chatService.closeConversation(conversationId, user.getDomainUser());
+        chatService.closeConversation(conversationId, user.getId());
         return ResponseEntity.noContent().build();
     }
 
@@ -129,7 +129,7 @@ public class ChatController {
             @AuthenticationPrincipal SecurityUser user
     ) {
         return ResponseEntity.ok(
-                chatService.getUnreadCount(user.getDomainUser())
+                chatService.getUnreadCount(user.getId())
         );
     }
 }

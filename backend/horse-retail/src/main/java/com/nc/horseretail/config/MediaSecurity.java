@@ -26,7 +26,7 @@ public class MediaSecurity {
             return false;
         }
 
-        UUID currentUserId = securityUser.getDomainUser().getId();
+        UUID currentUserId = securityUser.getId();
 
         return mediaRepository.findById(mediaId)
                 .map(media -> media.getUploadedBy()

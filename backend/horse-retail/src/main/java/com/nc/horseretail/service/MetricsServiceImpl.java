@@ -5,12 +5,10 @@ import com.nc.horseretail.dto.FeedbackResponse;
 import com.nc.horseretail.dto.metrics.BreedMetricResponse;
 import com.nc.horseretail.dto.metrics.CountryMetricResponse;
 import com.nc.horseretail.dto.metrics.MonthlyGrowthResponse;
+import com.nc.horseretail.exception.ResourceNotFoundException;
 import com.nc.horseretail.model.feedback.Feedback;
 import com.nc.horseretail.model.user.User;
-import com.nc.horseretail.repository.FeedbackRepository;
-import com.nc.horseretail.repository.HorseRepository;
-import com.nc.horseretail.repository.ListingRepository;
-import com.nc.horseretail.repository.MetricsRepository;
+import com.nc.horseretail.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +27,7 @@ public class MetricsServiceImpl implements MetricsService {
     private final MetricsRepository metricsRepository;
     private final FeedbackRepository feedbackRepository;
     private final ListingRepository listingRepository;
+    private final UserRepository userRepository;
 
     // ============================
     // PUBLIC METRICS
@@ -51,9 +51,12 @@ public class MetricsServiceImpl implements MetricsService {
 
     @Override
     @Transactional
-    public void saveFeedback(FeedbackRequest request, User user) {
+    public void saveFeedback(FeedbackRequest request, UUID userId) {
 
-        // Evita feedback duplicado
+        User user = userRepository.findById(userId).orElseThrow(
+                () -> new ResourceNotFoundException("User not found")
+        );
+
         if (feedbackRepository.existsByUser(user)) {
             throw new IllegalStateException("User already submitted feedback");
         }

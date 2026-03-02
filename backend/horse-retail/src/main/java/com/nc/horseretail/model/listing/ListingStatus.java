@@ -10,6 +10,7 @@ public enum ListingStatus {
     SOLD,
     CANCELLED,
     EXPIRED,
-    WITHDRAWN
+    WITHDRAWN,
+    DELETED
 
 }
