@@ -1,4 +1,3 @@
-
 package com.nc.horseretail.repository;
 
 import com.nc.horseretail.model.media.MediaAsset;
@@ -11,5 +10,8 @@ import java.util.UUID;
 @Repository
 public interface MediaAssetRepository extends JpaRepository<MediaAsset, UUID> {
 
+
     List<MediaAsset> findByHorseId(UUID horseId);
+
+    List<MediaAsset> findByListingId(UUID listingId);
 }

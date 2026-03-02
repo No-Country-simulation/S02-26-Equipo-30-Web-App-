@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -140,23 +141,31 @@ public class MetricsServiceImpl implements MetricsService {
 
         List<Object[]> results = metricsRepository.getMonthlyGrowthRaw();
 
-        return results.stream().map(row -> {
+        List<MonthlyGrowthResponse> monthlyGrowth = new ArrayList<>();
+        Long previousUsers = null;
 
-            Integer year = (Integer) row[0];
-            Integer month = (Integer) row[1];
-            Long users = (Long) row[2];
-            Long listings = (Long) row[3];
-            BigDecimal revenue = (BigDecimal) row[4];
-            Double growth = (Double) row[5];
+        for (Object[] row : results) {
+            Integer year = ((Number) row[0]).intValue();
+            Integer month = ((Number) row[1]).intValue();
+            Long users = ((Number) row[2]).longValue();
 
-            return MonthlyGrowthResponse.builder()
+            double growth = 0.0;
+            if (previousUsers != null && previousUsers > 0) {
+                growth = ((users - previousUsers) * 100.0) / previousUsers;
+            }
+
+            monthlyGrowth.add(MonthlyGrowthResponse.builder()
                     .year(year)
                     .month(month)
                     .newUsers(users)
-                    .newListings(listings)
-                    .revenue(revenue == null ? BigDecimal.ZERO : revenue)
-                    .growthPercentage(growth == null ? 0.0 : Math.round(growth * 10.0) / 10.0)
-                    .build();
-        }).toList();
+                    .newListings(0L)
+                    .revenue(BigDecimal.ZERO)
+                    .growthPercentage(Math.round(growth * 10.0) / 10.0)
+                    .build());
+
+            previousUsers = users;
+        }
+
+        return monthlyGrowth;
     }
 }

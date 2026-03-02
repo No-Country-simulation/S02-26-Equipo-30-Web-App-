@@ -27,7 +27,7 @@ public class AuthController {
     // REGISTER NEW USER
     // ============================
 
-    @Operation(summary = "Register new user", description = "Creates a new account and returns JWT tokens")
+    @Operation(summary = "Register new user", description = "Creates a new account and sends verification code to email")
     @ApiResponse(responseCode = "201", description = "User registered successfully")
     @ApiResponse(responseCode = "400", description = "Invalid input data")
     @PostMapping("/register")
@@ -35,6 +35,18 @@ public class AuthController {
         log.info("Register request received for email {}", request.getEmail());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(authService.register(request));
+    }
+
+    // ============================
+    // VERIFY EMAIL
+    // ============================
+
+    @Operation(summary = "Verify user email", description = "Verifies account email with one-time code")
+    @ApiResponse(responseCode = "200", description = "Email verified successfully")
+    @ApiResponse(responseCode = "422", description = "Invalid or expired verification code")
+    @PostMapping("/verify-email")
+    public ResponseEntity<AuthResponse> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+        return ResponseEntity.ok(authService.verifyEmail(request));
     }
 
     // ============================
@@ -93,12 +105,16 @@ public class AuthController {
     // ============================
 
     @Operation(summary = "Logout user", description = "Invalidates refresh token")
-    @ApiResponse(responseCode = "200", description = "Logged out successfully")
+    @ApiResponse(responseCode = "204", description = "Logged out successfully")
+    @ApiResponse(responseCode = "401", description = "Unauthorized")
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@AuthenticationPrincipal SecurityUser securityUser) {
+        if (securityUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
         authService.logout(securityUser.getDomainUser());
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 }

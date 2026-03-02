@@ -1,14 +1,20 @@
 package com.nc.horseretail.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
-import java.nio.file.AccessDeniedException;
 import java.time.Instant;
 import java.util.stream.Collectors;
 
@@ -40,11 +46,27 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiError handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
-        String message = ex.getBindingResult().getFieldErrors().stream().map(err -> err.getField() + " " + err.getDefaultMessage()).collect(Collectors.joining(", "));
+        String message = ex.getBindingResult().getFieldErrors().stream()
+                .map(err -> err.getField() + " " + err.getDefaultMessage())
+                .collect(Collectors.joining(", "));
 
         log.warn("Validation error: {}", message);
 
         return build(HttpStatus.BAD_REQUEST, "Validation Error", message, request);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiError handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+        String message = "Invalid value for parameter '" + ex.getName() + "'";
+        log.warn("Type mismatch: {}", message);
+        return build(HttpStatus.BAD_REQUEST, "Validation Error", message, request);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiError handleUnreadableMessage(HttpMessageNotReadableException ex, HttpServletRequest request) {
+        return build(HttpStatus.BAD_REQUEST, "Bad Request", ex, request);
     }
 
     @ExceptionHandler(Exception.class)
@@ -88,10 +110,49 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.UNAUTHORIZED, "Invalid Credential", ex, request);
     }
 
-    @ExceptionHandler(ForbiddenOperationException.class)
+    @ExceptionHandler({ForbiddenOperationException.class, AccessDeniedException.class})
     @ResponseStatus(HttpStatus.FORBIDDEN)
-    public ApiError handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+    public ApiError handleAccessDenied(Exception ex, HttpServletRequest request) {
         return build(HttpStatus.FORBIDDEN, "Access Denied", ex, request);
+    }
+
+    @ExceptionHandler({AuthorizationDeniedException.class})
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ApiError handleAuthorizationDenied(AuthorizationDeniedException ex, HttpServletRequest request) {
+        log.warn("Authorization denied: {}", ex.getMessage());
+        return build(HttpStatus.FORBIDDEN, "Access Denied", ex, request);
+    }
+
+    @ExceptionHandler(EntityNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ApiError handleEntityNotFound(EntityNotFoundException ex, HttpServletRequest request) {
+        log.warn("Entity not found: {}", ex.getMessage());
+        return build(HttpStatus.NOT_FOUND, "Not Found", ex, request);
+    }
+
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiError handleMissingPart(MissingServletRequestPartException ex, HttpServletRequest request) {
+        return build(HttpStatus.BAD_REQUEST, "Bad Request", ex, request);
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    @ResponseStatus(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+    public ApiError handleUnsupportedMediaType(HttpMediaTypeNotSupportedException ex, HttpServletRequest request) {
+        return build(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported Media Type", ex, request);
+    }
+
+    @ExceptionHandler(FileDeletionException.class)
+    @ResponseStatus(HttpStatus.BAD_GATEWAY)
+    public ApiError handleFileUploadException(FileDeletionException ex, HttpServletRequest request) {
+        log.error("File deletion error: {}", ex.getMessage());
+        return build(HttpStatus.BAD_GATEWAY, "File Deletion Error", ex, request);
+    }
+
+    @ExceptionHandler(FileUploadException.class)
+    public ApiError handleUpload(FileUploadException ex, HttpServletRequest request) {
+        log.error("File upload error: {}", ex.getMessage());
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, "File upload Error", ex, request);
     }
 
     // ======================
