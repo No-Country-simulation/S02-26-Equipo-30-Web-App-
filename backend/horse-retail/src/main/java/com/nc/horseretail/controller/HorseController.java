@@ -41,7 +41,7 @@ public class HorseController {
     public ResponseEntity<Void> createHorse(@Valid @RequestBody HorseRequest request,
                                             @AuthenticationPrincipal SecurityUser securityUser) {
         log.info("Creating horse for user {}", securityUser.getUsername());
-        horseService.createHorse(request, securityUser.getDomainUser());
+        horseService.createHorse(request, securityUser.getId());
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
@@ -90,7 +90,7 @@ public class HorseController {
                                                      @AuthenticationPrincipal SecurityUser securityUser) {
         log.info("Updating horse {} by user {}", id, securityUser.getUsername());
         return ResponseEntity.ok(
-                horseService.updateHorse(id, request, securityUser.getDomainUser())
+                horseService.updateHorse(id, request, securityUser.getId())
         );
     }
 
@@ -106,7 +106,7 @@ public class HorseController {
     public ResponseEntity<Void> deleteHorse(@PathVariable UUID id,
                                             @AuthenticationPrincipal SecurityUser securityUser) {
         log.info("Deleting horse {} by user {}", id, securityUser.getUsername());
-        horseService.deleteHorse(id, securityUser.getDomainUser());
+        horseService.deleteHorse(id, securityUser.getId());
         return ResponseEntity.noContent().build();
     }
 
@@ -122,7 +122,7 @@ public class HorseController {
 
         log.info("Fetching horses for user {}", securityUser.getUsername());
         return ResponseEntity.ok(
-                horseService.getMyHorses(securityUser.getDomainUser())
+                horseService.getMyHorses(securityUser.getId())
         );
     }
 
@@ -138,7 +138,7 @@ public class HorseController {
 
         log.info("Counting horses for user {}", securityUser.getUsername());
         return ResponseEntity.ok(
-                horseService.countMyHorses(securityUser.getDomainUser())
+                horseService.countMyHorses(securityUser.getId())
         );
     }
 }

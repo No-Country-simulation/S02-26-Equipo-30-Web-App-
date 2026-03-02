@@ -12,33 +12,39 @@ import com.nc.horseretail.model.listing.ListingStatus;
 import com.nc.horseretail.model.user.User;
 import com.nc.horseretail.repository.HorseRepository;
 import com.nc.horseretail.repository.ListingRepository;
+import com.nc.horseretail.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
+import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ListingServiceImpl implements ListingService {
 
     private final ListingMapper listingMapper;
     private final ListingRepository listingRepository;
     private final HorseRepository horseRepository;
+    private final UserRepository userRepository;
+
+    private static final String LISTING_NOT_FOUND = "Listing not found with id: %s";
 
     // ============================
     // CREATE
     // ============================
 
     @Override
-    public ListingResponse createListing(ListingRequest dto, User currentUser) {
+    public ListingResponse createListing(ListingRequest dto, UUID securityUserId) {
 
         Horse horse = horseRepository.findById(dto.getHorseId())
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Horse not found with id: " + dto.getHorseId()));
 
-        if (!horse.getOwner().getId().equals(currentUser.getId())) {
+        if (!horse.getOwner().getId().equals(securityUserId)) {
             throw new ForbiddenOperationException("You are not allowed to perform this operation");
         }
 
@@ -48,7 +54,7 @@ public class ListingServiceImpl implements ListingService {
 
         Listing listing = listingMapper.toEntity(dto);
 
-        listing.setOwner(currentUser);
+        listing.setOwner(horse.getOwner());
         listing.setHorse(horse);
         listing.setStatus(ListingStatus.ACTIVE);
         listing.setExternalId(UUID.randomUUID().toString());
@@ -77,12 +83,10 @@ public class ListingServiceImpl implements ListingService {
     @Override
     public ListingResponse getListingById(UUID id) {
 
-        Listing listing = listingRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Listing not found with id: " + id));
+        Listing listing = findListingOrThrow(id);
 
         if (listing.getStatus() != ListingStatus.ACTIVE) {
-            throw new ResourceNotFoundException("Listing not found with id: " + id);
+            throw new ResourceNotFoundException(LISTING_NOT_FOUND.formatted(id));
         }
 
         return listingMapper.toDto(listing);
@@ -93,7 +97,9 @@ public class ListingServiceImpl implements ListingService {
     // ============================
 
     @Override
-    public ListingResponse updateListing(UUID id, ListingRequest dto, User domainUser) {
+    public ListingResponse updateListing(UUID id, ListingRequest dto, UUID userId) {
+
+        User domainUser = findUserOrThrow(userId);
 
         Listing listing = findOwnedListing(id, domainUser);
 
@@ -112,7 +118,9 @@ public class ListingServiceImpl implements ListingService {
     // ============================
 
     @Override
-    public void deleteListing(UUID id, User domainUser) {
+    public void deleteListing(UUID id, UUID userId) {
+
+        User domainUser = findUserOrThrow(userId);
 
         Listing listing = findOwnedListing(id, domainUser);
 
@@ -128,25 +136,37 @@ public class ListingServiceImpl implements ListingService {
     // ============================
 
     @Override
-    public Page<ListingResponse> getMyListings(User domainUser, Pageable pageable) {
+    public Page<ListingResponse> getMyListings(UUID userId, Pageable pageable) {
+
+        User domainUser = findUserOrThrow(userId);
+
         return listingRepository.findByOwner(domainUser, pageable)
                 .map(listingMapper::toDto);
     }
 
     @Override
-    public Page<ListingResponse> getMyActiveListings(User domainUser, Pageable pageable) {
+    public Page<ListingResponse> getMyActiveListings(UUID userId, Pageable pageable) {
+
+        User domainUser = findUserOrThrow(userId);
+
         return listingRepository.findByOwnerAndStatus(domainUser, ListingStatus.ACTIVE, pageable)
                 .map(listingMapper::toDto);
     }
 
     @Override
-    public Page<ListingResponse> getMySoldListings(User domainUser, Pageable pageable) {
+    public Page<ListingResponse> getMySoldListings(UUID userId, Pageable pageable) {
+
+        User domainUser = findUserOrThrow(userId);
+
         return listingRepository.findByOwnerAndStatus(domainUser, ListingStatus.SOLD, pageable)
                 .map(listingMapper::toDto);
     }
 
     @Override
-    public Long countMyListings(User domainUser) {
+    public Long countMyListings(UUID userId) {
+
+        User domainUser = findUserOrThrow(userId);
+
         return listingRepository.countByOwner(domainUser);
     }
 
@@ -155,7 +175,9 @@ public class ListingServiceImpl implements ListingService {
     // ============================
 
     @Override
-    public ListingResponse markAsSold(UUID id, User domainUser) {
+    public ListingResponse markAsSold(UUID id, UUID userId) {
+
+        User domainUser = findUserOrThrow(userId);
 
         Listing listing = findOwnedListing(id, domainUser);
 
@@ -169,7 +191,9 @@ public class ListingServiceImpl implements ListingService {
     }
 
     @Override
-    public ListingResponse activateListing(UUID id, User domainUser) {
+    public ListingResponse activateListing(UUID id, UUID userId) {
+
+        User domainUser = findUserOrThrow(userId);
 
         Listing listing = findOwnedListing(id, domainUser);
 
@@ -183,7 +207,9 @@ public class ListingServiceImpl implements ListingService {
     }
 
     @Override
-    public ListingResponse pauseListing(UUID id, User domainUser) {
+    public ListingResponse pauseListing(UUID id, UUID userId) {
+
+        User domainUser = findUserOrThrow(userId);
 
         Listing listing = findOwnedListing(id, domainUser);
 
@@ -197,7 +223,9 @@ public class ListingServiceImpl implements ListingService {
     }
 
     @Override
-    public ListingResponse cancelListing(UUID id, User domainUser) {
+    public ListingResponse cancelListing(UUID id, UUID userId) {
+
+        User domainUser = findUserOrThrow(userId);
 
         Listing listing = findOwnedListing(id, domainUser);
 
@@ -215,27 +243,57 @@ public class ListingServiceImpl implements ListingService {
         return listingRepository.findAll(pageable).map(listingMapper::toDto);
     }
 
+    @Transactional
     @Override
     public void deleteListingByAdmin(UUID listingId) {
-        //TODO implement method
-        throw new BusinessException("Method not implemented yet");
+
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(LISTING_NOT_FOUND.formatted(listingId)));
+
+        if (listing.getStatus() == ListingStatus.DELETED) {
+            throw new BusinessException("Listing already deleted");
+        }
+
+        listing.setStatus(ListingStatus.DELETED);
+
+        log.info("Listing {} soft deleted by admin", listingId);
     }
 
+    @Transactional
     @Override
     public void forceCloseListing(UUID listingId) {
-        //TODO implement method
-        throw new BusinessException("Method not implemented yet");
+
+        Listing listing = findListingOrThrow(listingId);
+
+        if (listing.getStatus() != ListingStatus.ACTIVE) {
+            throw new BusinessException("Only active listings can be force closed");
+        }
+
+        listing.setStatus(ListingStatus.CLOSED);
+
+        log.info("Listing {} force closed by admin", listingId);
     }
+
 
     // ============================
     // PRIVATE HELPER
     // ============================
 
+    private Listing findListingOrThrow(UUID id) {
+        return listingRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(LISTING_NOT_FOUND.formatted(id)));
+    }
+    private User findUserOrThrow(UUID userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found with id: " + userId));
+    }
+
     private Listing findOwnedListing(UUID id, User user) {
 
-        Listing listing = listingRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Listing not found with id: " + id));
+        Listing listing = findListingOrThrow(id);
 
         if (!listing.getOwner().getId().equals(user.getId())) {
             throw new ForbiddenOperationException("You are not allowed to perform this operation");

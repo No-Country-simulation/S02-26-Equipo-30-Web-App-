@@ -8,6 +8,7 @@ import com.nc.horseretail.exception.ResourceNotFoundException;
 import com.nc.horseretail.mapper.HorseMapper;
 import com.nc.horseretail.mapper.UserMapper;
 import com.nc.horseretail.model.horse.Horse;
+import com.nc.horseretail.model.horse.HorseStatus;
 import com.nc.horseretail.model.listing.ListingStatus;
 import com.nc.horseretail.model.user.Role;
 import com.nc.horseretail.model.user.User;
@@ -54,8 +55,9 @@ public class UserServiceImpl implements UserService {
     // ============================
 
     @Override
-    public UserResponse getMe(User domainUser) {
-        return userMapper.toDto(domainUser);
+    public UserResponse getMe(UUID userId) {
+        User user = findVisibleUser(userId);
+        return userMapper.toDto(user);
     }
 
     // ============================
@@ -63,7 +65,9 @@ public class UserServiceImpl implements UserService {
     // ============================
 
     @Override
-    public UserResponse updateMe(User domainUser, UserUpdateRequest request) {
+    public UserResponse updateMe(UUID userId, UserUpdateRequest request) {
+
+        User domainUser = findVisibleUser(userId);
 
         if (!domainUser.getEmail().equalsIgnoreCase(request.getEmail())) {
             if (userRepository.existsByEmail(request.getEmail())) {
@@ -85,7 +89,9 @@ public class UserServiceImpl implements UserService {
     // ============================
 
     @Override
-    public void changePassword(User domainUser, PasswordUpdateRequest request) {
+    public void changePassword(UUID userId, PasswordUpdateRequest request) {
+
+        User domainUser = findVisibleUser(userId);
 
         if (!passwordEncoder.matches(request.getCurrentPassword(), domainUser.getPasswordHash())) {
             throw new BusinessException("Current password is incorrect");
@@ -111,7 +117,9 @@ public class UserServiceImpl implements UserService {
     // ============================
 
     @Override
-    public void deleteMe(User domainUser) {
+    public void deleteMe(UUID userId) {
+
+        User domainUser = findVisibleUser(userId);
 
         domainUser.setStatus(UserStatus.DEACTIVATED);
 
@@ -241,24 +249,36 @@ public class UserServiceImpl implements UserService {
     }
 
 
+    @Transactional
     @Override
     public void addFavoriteHorse(UUID userId, UUID horseId) {
 
         User user = findUserOrThrow(userId);
-
         Horse horse = findHorseOrThrow(horseId);
 
-        user.getFavoriteHorses().add(horse);
+        if (horse.getStatus() == HorseStatus.DELETED) {
+            throw new BusinessException("Cannot favorite a deleted horse");
+        }
+
+        if (!user.getFavoriteHorses().add(horse)) {
+            throw new BusinessException("Horse already in favorites");
+        }
+
+        log.info("User {} added horse {} to favorites", userId, horseId);
     }
 
+    @Transactional
     @Override
     public void removeFavoriteHorse(UUID userId, UUID horseId) {
 
         User user = findUserOrThrow(userId);
-
         Horse horse = findHorseOrThrow(horseId);
 
-        user.getFavoriteHorses().remove(horse);
+        if (!user.getFavoriteHorses().remove(horse)) {
+            throw new BusinessException("Horse not found in favorites");
+        }
+
+        log.info("User {} removed horse {} from favorites", userId, horseId);
     }
 
     @Override

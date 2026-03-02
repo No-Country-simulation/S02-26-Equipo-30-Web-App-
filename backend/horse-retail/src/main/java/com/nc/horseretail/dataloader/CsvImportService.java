@@ -77,8 +77,6 @@ public class CsvImportService {
                         listingCsvMapper.toRiskAssessment(listing, row);
 
                 riskRepository.save(riskAssessment);
-
-                //TODO  create vets
             }
 
             log.info("Successfully imported {} horses", rows.size());

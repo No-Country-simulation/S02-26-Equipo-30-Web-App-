@@ -42,7 +42,7 @@ public class UserController {
             @AuthenticationPrincipal SecurityUser securityUser) {
 
         return ResponseEntity.ok(
-                userService.getMe(securityUser.getDomainUser())
+                userService.getMe(securityUser.getId())
         );
     }
 
@@ -57,7 +57,7 @@ public class UserController {
             @AuthenticationPrincipal SecurityUser securityUser) {
 
         return ResponseEntity.ok(
-                userService.updateMe(securityUser.getDomainUser(), request)
+                userService.updateMe(securityUser.getId(), request)
         );
     }
 
@@ -71,7 +71,7 @@ public class UserController {
             @Valid @RequestBody PasswordUpdateRequest request,
             @AuthenticationPrincipal SecurityUser securityUser) {
 
-        userService.changePassword(securityUser.getDomainUser(), request);
+        userService.changePassword(securityUser.getId(), request);
         return ResponseEntity.ok().build();
     }
 
@@ -84,7 +84,7 @@ public class UserController {
     public ResponseEntity<Void> deleteMe(
             @AuthenticationPrincipal SecurityUser securityUser) {
 
-        userService.deleteMe(securityUser.getDomainUser());
+        userService.deleteMe(securityUser.getId());
         return ResponseEntity.noContent().build();
     }
 
@@ -138,7 +138,7 @@ public class UserController {
             @PathVariable UUID horseId,
             @AuthenticationPrincipal SecurityUser securityUser
     ) {
-        userService.addFavoriteHorse(securityUser.getDomainUser().getId(), horseId);
+        userService.addFavoriteHorse(securityUser.getId(), horseId);
 
         return ResponseEntity.ok().build();
     }
@@ -149,7 +149,7 @@ public class UserController {
             @AuthenticationPrincipal SecurityUser securityUser
     ) {
 
-        userService.removeFavoriteHorse(securityUser.getDomainUser().getId(), horseId);
+        userService.removeFavoriteHorse(securityUser.getId(), horseId);
 
         return ResponseEntity.noContent().build();
     }
@@ -160,7 +160,7 @@ public class UserController {
     ) {
 
         return ResponseEntity.ok(
-                userService.getFavoriteHorses(securityUser.getDomainUser().getId())
+                userService.getFavoriteHorses(securityUser.getId())
         );
     }
 

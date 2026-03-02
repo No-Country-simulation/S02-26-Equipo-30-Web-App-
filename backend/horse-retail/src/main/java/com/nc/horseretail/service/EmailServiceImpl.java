@@ -3,6 +3,7 @@ package com.nc.horseretail.service;
 import com.nc.horseretail.exception.ExternalServiceException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -37,19 +38,7 @@ public class EmailServiceImpl implements EmailService {
         }
 
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(fromAddress);
-            message.setTo(recipientEmail);
-            message.setSubject("Horse Trust - Password Reset");
-            message.setText("""
-                    We received a request to reset your password.
-
-                    Use the link below to set a new password:
-                    %s
-
-                    This link expires in 30 minutes.
-                    If you did not request this, you can ignore this email.
-                    """.formatted(resetLink));
+            SimpleMailMessage message = getResetPasswordMessage(recipientEmail, resetLink);
 
             mailSender.send(message);
         } catch (Exception exception) {
@@ -66,20 +55,7 @@ public class EmailServiceImpl implements EmailService {
         }
 
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(fromAddress);
-            message.setTo(recipientEmail);
-            message.setSubject("Horse Trust - Email Verification Code");
-            message.setText("""
-                    Welcome to Horse Trust.
-
-                    Your verification code is:
-                    %s
-
-                    This code expires in 10 minutes.
-                    If you did not create this account, you can ignore this email.
-                    """.formatted(code));
-
+            SimpleMailMessage message = getVerificationMessage(recipientEmail, code);
             mailSender.send(message);
         } catch (Exception exception) {
             throw new ExternalServiceException("Failed to send email verification code");
@@ -89,5 +65,43 @@ public class EmailServiceImpl implements EmailService {
     private String buildResetLink(String token) {
         String encodedToken = URLEncoder.encode(token, StandardCharsets.UTF_8);
         return resetPasswordBaseUrl + "?token=" + encodedToken;
+    }
+
+    // ==========================================================
+    // HELPERS
+    // ==========================================================
+
+    private @NonNull SimpleMailMessage getVerificationMessage(String recipientEmail, String code) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromAddress);
+        message.setTo(recipientEmail);
+        message.setSubject("Horse Trust - Email Verification Code");
+        message.setText("""
+                Welcome to Horse Trust.
+                
+                Your verification code is:
+                %s
+                
+                This code expires in 10 minutes.
+                If you did not create this account, you can ignore this email.
+                """.formatted(code));
+        return message;
+    }
+
+    private @NonNull SimpleMailMessage getResetPasswordMessage(String recipientEmail, String resetLink) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromAddress);
+        message.setTo(recipientEmail);
+        message.setSubject("Horse Trust - Password Reset");
+        message.setText("""
+                We received a request to reset your password.
+                
+                Use the link below to set a new password:
+                %s
+                
+                This link expires in 30 minutes.
+                If you did not request this, you can ignore this email.
+                """.formatted(resetLink));
+        return message;
     }
 }

@@ -12,6 +12,5 @@ public class RegisterRequest {
     private String fullName;
     private String email;
     private String password;
-    //TODO save phone
     private String phoneNumber;
 }

@@ -137,7 +137,7 @@ public class MetricsController {
 
         log.info("Feedback submitted by user {}", securityUser.getUsername());
 
-        metricsService.saveFeedback(request, securityUser.getDomainUser());
+        metricsService.saveFeedback(request, securityUser.getId());
 
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
