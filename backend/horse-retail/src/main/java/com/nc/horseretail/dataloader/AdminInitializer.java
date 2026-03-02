@@ -39,6 +39,7 @@ public class AdminInitializer implements ApplicationRunner {
                     .fullName("System Admin")
                     .passwordHash(passwordEncoder.encode(adminPassword))
                     .role(Role.ADMIN)
+                    .emailVerified(true)
                     .status(UserStatus.ACTIVE)
                     .emailVerified(true)
                     .accountEnabled(true)
