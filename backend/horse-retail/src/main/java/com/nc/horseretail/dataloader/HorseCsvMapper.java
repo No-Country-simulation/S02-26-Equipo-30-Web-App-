@@ -1,6 +1,6 @@
 package com.nc.horseretail.dataloader;
 
-import com.nc.horseretail.model.horse.Horse;
+import  com.nc.horseretail.model.horse.Horse;
 import com.nc.horseretail.model.horse.Location;
 import com.nc.horseretail.model.horse.MainUse;
 import com.nc.horseretail.model.horse.Temperament;
@@ -22,6 +22,7 @@ public class HorseCsvMapper {
         return Horse.builder()
                 .externalId(row.getHorseId())
                 .name("Horse " + row.getHorseId())
+                .stripePriceId(row.getStripePriceId())
                 .owner(owner)
                 .birthDate(row.getBirthDate())
                 .sex(row.getSex())

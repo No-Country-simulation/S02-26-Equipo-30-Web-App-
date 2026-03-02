@@ -25,6 +25,9 @@ public class Horse {
 
     private String name;
 
+    @Column(name = "stripe_price_id")
+    private String stripePriceId;
+
     @Column(name = "external_id", unique = true)
     private String externalId;
 

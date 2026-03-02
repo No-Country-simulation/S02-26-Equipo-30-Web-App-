@@ -18,6 +18,11 @@ public class HorseCsvRow {
     // HORSE
     // =========================
     private String horseId;
+    // ================
+    // STRIPE
+    //=================
+    private String stripePriceId;
+
     private LocalDate birthDate;
     private String sex;                 // h_sex
     private String breed;               // raza
