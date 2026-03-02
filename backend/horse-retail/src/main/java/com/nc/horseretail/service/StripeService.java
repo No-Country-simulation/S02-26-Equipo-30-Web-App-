@@ -28,9 +28,10 @@ public class StripeService {
             Horse horse = horseRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Horse not found"));
 
+            // TODO set listing price instead of hardcoded price id
             lineItems.add(
                     SessionCreateParams.LineItem.builder()
-                            .setPrice(horse.getStripePriceId())
+                            .setPrice("horse.getStripePriceId()")
                             .setQuantity(1L)
                             .build()
             );

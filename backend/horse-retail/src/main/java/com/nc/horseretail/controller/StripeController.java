@@ -27,7 +27,8 @@ public class StripeController {
 
             items.add(
                     SessionCreateParams.LineItem.builder()
-                            .setPrice(horse.getStripePriceId())
+                            //TODO set price id from stripe
+//                            .setPrice(horse.getStripePriceId())
                             .setQuantity(1L)
                             .build()
             );

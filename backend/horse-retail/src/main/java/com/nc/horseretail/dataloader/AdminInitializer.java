@@ -1,0 +1,52 @@
+package com.nc.horseretail.dataloader;
+
+import com.nc.horseretail.model.user.Role;
+import com.nc.horseretail.model.user.User;
+import com.nc.horseretail.model.user.UserStatus;
+import com.nc.horseretail.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Profile;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
+
+@Component
+@Profile("prod")
+@RequiredArgsConstructor
+@Slf4j
+public class AdminInitializer implements ApplicationRunner {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    @Value("${app.admin.email}")
+    private String adminEmail;
+
+    @Value("${app.admin.password}")
+    private String adminPassword;
+
+    @Override
+    public void run(ApplicationArguments args) {
+
+        if (!userRepository.existsByEmail(adminEmail)) {
+
+            User admin = User.builder()
+                    .email(adminEmail)
+                    .username(adminEmail)
+                    .fullName("System Admin")
+                    .passwordHash(passwordEncoder.encode(adminPassword))
+                    .role(Role.ADMIN)
+                    .status(UserStatus.ACTIVE)
+                    .emailVerified(true)
+                    .accountEnabled(true)
+                    .build();
+
+            userRepository.save(admin);
+
+            log.info("Production admin user created: {}", adminEmail);
+        }
+    }
+}
