@@ -9,13 +9,16 @@ import com.nc.horseretail.dto.auth.VerifyEmailRequest;
 import com.nc.horseretail.exception.BusinessException;
 import com.nc.horseretail.exception.EmailAlreadyExistException;
 import com.nc.horseretail.exception.InvalidCredentialException;
+import com.nc.horseretail.exception.ResourceNotFoundException;
 import com.nc.horseretail.model.auth.EmailVerificationToken;
 import com.nc.horseretail.model.auth.PasswordResetToken;
+import com.nc.horseretail.model.auth.RefreshToken;
 import com.nc.horseretail.model.user.Role;
 import com.nc.horseretail.model.user.User;
 import com.nc.horseretail.model.user.UserStatus;
 import com.nc.horseretail.repository.EmailVerificationTokenRepository;
 import com.nc.horseretail.repository.PasswordResetTokenRepository;
+import com.nc.horseretail.repository.RefreshTokenRepository;
 import com.nc.horseretail.repository.UserRepository;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +28,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,6 +58,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final RefreshTokenRepository refreshTokenRepository;
     @Value("${app.email-verification.code-ttl-minutes:10}")
     private long verificationCodeTtlMinutes;
 
@@ -75,6 +78,7 @@ public class AuthServiceImpl implements AuthService {
                 .fullName(request.getFullName())
                 .username(request.getEmail())
                 .email(request.getEmail())
+                .phoneNumber(request.getPhoneNumber())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .role(Role.USER)
                 .status(UserStatus.ACTIVE)
@@ -106,6 +110,7 @@ public class AuthServiceImpl implements AuthService {
     // ============================
 
     @Override
+    @Transactional
     public AuthResponse authenticate(AuthRequest request) {
 
         try {
@@ -119,8 +124,7 @@ public class AuthServiceImpl implements AuthService {
             throw new InvalidCredentialException("Invalid email or password");
         }
 
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        User user = getByEmailOrThrow(request.getEmail());
 
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new InvalidCredentialException("Account is not active");
@@ -134,6 +138,15 @@ public class AuthServiceImpl implements AuthService {
         String accessToken = jwtService.generateToken(claims, user);
         String refreshToken = jwtService.generateRefreshToken(user);
 
+        RefreshToken refreshTokenEntity = RefreshToken.builder()
+                .token(refreshToken)
+                .user(user)
+                .expiresAt(jwtService.getExpirationInstant(refreshToken))
+                .revoked(false)
+                .build();
+
+        refreshTokenRepository.save(refreshTokenEntity);
+
         return AuthResponse.builder()
                 .token(accessToken)
                 .refreshToken(refreshToken)
@@ -145,7 +158,19 @@ public class AuthServiceImpl implements AuthService {
     // ============================
 
     @Override
+    @Transactional
     public AuthResponse refreshToken(String refreshToken) {
+
+        RefreshToken storedToken = refreshTokenRepository
+                .findByTokenAndRevokedFalse(refreshToken)
+                .orElseThrow(() ->
+                        new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token")
+                );
+
+        if (storedToken.getExpiresAt().isBefore(Instant.now())) {
+            refreshTokenRepository.delete(storedToken);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token expired");
+        }
 
         String email;
 
@@ -159,8 +184,7 @@ public class AuthServiceImpl implements AuthService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token");
         }
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        User user = getByEmailOrThrow(email);
 
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Account inactive");
@@ -169,10 +193,21 @@ public class AuthServiceImpl implements AuthService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Email is not verified");
         }
 
+        refreshTokenRepository.delete(storedToken);
+
         var claims = buildClaims(user);
 
         String newAccessToken = jwtService.generateToken(claims, user);
         String newRefreshToken = jwtService.generateRefreshToken(user);
+
+        RefreshToken newRefreshEntity = RefreshToken.builder()
+                .token(newRefreshToken)
+                .user(user)
+                .expiresAt(jwtService.getExpirationInstant(refreshToken))
+                .revoked(false)
+                .build();
+
+        refreshTokenRepository.save(newRefreshEntity);
 
         return AuthResponse.builder()
                 .token(newAccessToken)
@@ -289,15 +324,18 @@ public class AuthServiceImpl implements AuthService {
     // ============================
 
     @Override
-    public void logout(User domainUser) {
+    @Transactional
+    public void logout(UUID userId) {
 
-        // Invalidar refresh tokens persistidos
+        User domainUser = getByIdOrThrow(userId);
 
-        log.info("User {} logged out", domainUser.getUsername());
+        refreshTokenRepository.deleteAllByUser(domainUser);
+
+        log.info("User {} logged out and refresh token invalidated", domainUser.getUsername());
     }
 
     // ============================
-    // PRIVATE
+    // HELPER METHODS
     // ============================
 
     private Map<String, Object> buildClaims(User user) {
@@ -310,5 +348,15 @@ public class AuthServiceImpl implements AuthService {
         int bound = (int) Math.pow(10, VERIFICATION_CODE_DIGITS);
         int code = ThreadLocalRandom.current().nextInt(bound);
         return String.format("%0" + VERIFICATION_CODE_DIGITS + "d", code);
+    }
+
+    private User getByIdOrThrow(UUID userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    }
+
+    private User getByEmailOrThrow(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 }

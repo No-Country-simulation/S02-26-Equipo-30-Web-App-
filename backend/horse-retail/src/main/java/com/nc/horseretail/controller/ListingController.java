@@ -46,7 +46,7 @@ public class ListingController {
         log.info("Creating listing for user {}", securityUser.getUsername());
 
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(listingService.createListing(dto, securityUser.getDomainUser()));
+                .body(listingService.createListing(dto, securityUser.getId()));
     }
 
     // ============================
@@ -108,7 +108,7 @@ public class ListingController {
         log.info("Updating listing {}", id);
 
         return ResponseEntity.ok(
-                listingService.updateListing(id, dto, securityUser.getDomainUser())
+                listingService.updateListing(id, dto, securityUser.getId())
         );
     }
 
@@ -130,7 +130,7 @@ public class ListingController {
 
         log.info("Deleting listing {}", id);
 
-        listingService.deleteListing(id, securityUser.getDomainUser());
+        listingService.deleteListing(id, securityUser.getId());
 
         return ResponseEntity.noContent().build();
     }
@@ -150,7 +150,7 @@ public class ListingController {
             @AuthenticationPrincipal SecurityUser securityUser) {
 
         return ResponseEntity.ok(
-                listingService.activateListing(id, securityUser.getDomainUser())
+                listingService.activateListing(id, securityUser.getId())
         );
     }
 
@@ -169,7 +169,7 @@ public class ListingController {
             @AuthenticationPrincipal SecurityUser securityUser) {
 
         return ResponseEntity.ok(
-                listingService.pauseListing(id, securityUser.getDomainUser())
+                listingService.pauseListing(id, securityUser.getId())
         );
     }
 
@@ -188,7 +188,7 @@ public class ListingController {
             @AuthenticationPrincipal SecurityUser securityUser) {
 
         return ResponseEntity.ok(
-                listingService.markAsSold(id, securityUser.getDomainUser())
+                listingService.markAsSold(id, securityUser.getId())
         );
     }
 
@@ -207,7 +207,7 @@ public class ListingController {
             @AuthenticationPrincipal SecurityUser securityUser) {
 
         return ResponseEntity.ok(
-                listingService.cancelListing(id, securityUser.getDomainUser())
+                listingService.cancelListing(id, securityUser.getId())
         );
     }
 
@@ -225,7 +225,7 @@ public class ListingController {
             Pageable pageable) {
 
         return ResponseEntity.ok(
-                listingService.getMyListings(securityUser.getDomainUser(), pageable)
+                listingService.getMyListings(securityUser.getId(), pageable)
         );
     }
 
@@ -243,7 +243,7 @@ public class ListingController {
             Pageable pageable) {
 
         return ResponseEntity.ok(
-                listingService.getMyActiveListings(securityUser.getDomainUser(), pageable)
+                listingService.getMyActiveListings(securityUser.getId(), pageable)
         );
     }
 
@@ -261,7 +261,7 @@ public class ListingController {
             Pageable pageable) {
 
         return ResponseEntity.ok(
-                listingService.getMySoldListings(securityUser.getDomainUser(), pageable)
+                listingService.getMySoldListings(securityUser.getId(), pageable)
         );
     }
 
@@ -278,7 +278,7 @@ public class ListingController {
             @AuthenticationPrincipal SecurityUser securityUser) {
 
         return ResponseEntity.ok(
-                listingService.countMyListings(securityUser.getDomainUser())
+                listingService.countMyListings(securityUser.getId())
         );
     }
 }

@@ -18,5 +18,5 @@ public class BreedMetricResponse {
     private Long listingCount;
 
     @Schema(description = "Percentage of total listings", example = "18.5")
-    private Double percentage; // TODO calculate percentage based on total listings count
+    private Double percentage;
 }

@@ -5,10 +5,10 @@ import com.nc.horseretail.dto.FeedbackResponse;
 import com.nc.horseretail.dto.metrics.BreedMetricResponse;
 import com.nc.horseretail.dto.metrics.CountryMetricResponse;
 import com.nc.horseretail.dto.metrics.MonthlyGrowthResponse;
-import com.nc.horseretail.model.user.User;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 
 public interface MetricsService {
 
@@ -16,7 +16,7 @@ public interface MetricsService {
 
     FeedbackResponse getSatisfactionMetrics();
 
-    void saveFeedback(FeedbackRequest request, User user);
+    void saveFeedback(FeedbackRequest request, UUID userId);
 
     Long countAllListings();
 

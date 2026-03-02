@@ -4,26 +4,25 @@ import com.nc.horseretail.dto.messaging.ConversationDetailResponse;
 import com.nc.horseretail.dto.messaging.ConversationSummaryResponse;
 import com.nc.horseretail.dto.messaging.MessageResponse;
 import com.nc.horseretail.dto.messaging.SendMessageRequest;
-import com.nc.horseretail.model.user.User;
 
 import java.util.List;
 import java.util.UUID;
 
 public interface ChatService {
 
-    MessageResponse sendMessage(UUID conversationId, SendMessageRequest request, User sender);
+    MessageResponse sendMessage(UUID conversationId, SendMessageRequest request, UUID userId);
 
-    List<ConversationSummaryResponse> getUserConversations(User user);
+    List<ConversationSummaryResponse> getUserConversations(UUID userId);
 
-    ConversationDetailResponse getConversation(UUID conversationId, User user);
+    ConversationDetailResponse getConversation(UUID conversationId, UUID userId);
 
-    ConversationDetailResponse createConversation(UUID listingId, User domainUser);
+    ConversationDetailResponse createConversation(UUID listingId, UUID userId);
 
-    List<MessageResponse> getMessages(UUID conversationId, User domainUser);
+    List<MessageResponse> getMessages(UUID conversationId, UUID userId);
 
-    void markMessageAsRead(UUID messageId, User domainUser);
+    void markMessageAsRead(UUID messageId, UUID userId);
 
-    void closeConversation(UUID conversationId, User domainUser);
+    void closeConversation(UUID conversationId, UUID userId);
 
-    Long getUnreadCount(User domainUser);
+    Long getUnreadCount(UUID userId);
 }

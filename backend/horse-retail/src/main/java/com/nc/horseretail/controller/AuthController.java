@@ -113,7 +113,7 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        authService.logout(securityUser.getDomainUser());
+        authService.logout(securityUser.getId());
 
         return ResponseEntity.noContent().build();
     }

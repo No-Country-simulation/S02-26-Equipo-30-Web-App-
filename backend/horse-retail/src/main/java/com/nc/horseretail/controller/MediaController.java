@@ -58,7 +58,7 @@ public class MediaController {
         MediaResponse response = mediaService.uploadMedia(
                 file,
                 request,
-                user.getDomainUser()
+                user.getId()
         );
 
         return ResponseEntity.ok(response);

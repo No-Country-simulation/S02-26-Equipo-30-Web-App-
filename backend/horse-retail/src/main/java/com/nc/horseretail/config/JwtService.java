@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.security.Key;
+import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
 import java.util.function.Function;
@@ -64,8 +65,8 @@ public class JwtService {
 
     public boolean isTokenValid(String token) {
         try {
-            getAllClaims(token);
-            return true;
+            Claims claims = getAllClaims(token);
+            return !claims.getExpiration().before(new Date());
         } catch (JwtException e) {
             return false;
         }
@@ -87,5 +88,9 @@ public class JwtService {
     private Key getSignInKey() {
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);
         return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    public Instant getExpirationInstant(String token) {
+        return getClaim(token, Claims::getExpiration).toInstant();
     }
 }

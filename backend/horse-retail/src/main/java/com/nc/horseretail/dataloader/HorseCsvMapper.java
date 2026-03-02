@@ -1,9 +1,6 @@
 package com.nc.horseretail.dataloader;
 
-import com.nc.horseretail.model.horse.Horse;
-import com.nc.horseretail.model.horse.Location;
-import com.nc.horseretail.model.horse.MainUse;
-import com.nc.horseretail.model.horse.Temperament;
+import com.nc.horseretail.model.horse.*;
 import com.nc.horseretail.model.user.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -22,6 +19,7 @@ public class HorseCsvMapper {
         return Horse.builder()
                 .externalId(row.getHorseId())
                 .name("Horse " + row.getHorseId())
+                .stripePriceId(row.getStripePriceId())
                 .owner(owner)
                 .birthDate(row.getBirthDate())
                 .sex(row.getSex())
@@ -41,6 +39,7 @@ public class HorseCsvMapper {
                 .sellerFlaggedFraud(row.getSellerFlaggedFraud())
                 .vetTotalExams(row.getVetTotalExams())
                 .vetMajorIssues(row.getVetMajorIssues())
+                .status(HorseStatus.ACTIVE)
                 .location(
                         Location.builder()
                                 .country(row.getCurrentCountry())
