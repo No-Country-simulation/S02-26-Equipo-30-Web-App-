@@ -8,4 +8,6 @@ import java.util.UUID;
 
 @Repository
 public interface RiskAssessmentRepository extends JpaRepository<RiskAssessment, UUID> {
+
+    void deleteByListingId(UUID listingId);
 }

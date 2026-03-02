@@ -18,6 +18,8 @@ public interface ListingRepository extends JpaRepository<Listing, UUID> {
 
     boolean existsByHorseIdAndStatus(UUID horseId, ListingStatus status);
 
+    List<Listing> findAllByHorseId(UUID horseId);
+
     Page<Listing> findByStatus(ListingStatus status, Pageable pageable);
 
     @Query("""

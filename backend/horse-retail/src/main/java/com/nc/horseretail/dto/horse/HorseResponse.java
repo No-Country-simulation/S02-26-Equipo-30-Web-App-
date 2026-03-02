@@ -7,6 +7,7 @@ import lombok.*;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -15,6 +16,7 @@ import java.time.LocalDate;
 @Builder
 public class HorseResponse {
 
+    private UUID id;
     private String name;
     private LocalDate birthDate;
     private String sex;
@@ -39,4 +41,5 @@ public class HorseResponse {
     private TrustScoreStatus trustScoreStatus;
     private Instant trustScoreUpdatedAt;
     private String trustModelVersion;
+    private String stripePriceId;
 }

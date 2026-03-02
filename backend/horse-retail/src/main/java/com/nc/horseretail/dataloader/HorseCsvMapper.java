@@ -19,6 +19,7 @@ public class HorseCsvMapper {
         return Horse.builder()
                 .externalId(row.getHorseId())
                 .name("Horse " + row.getHorseId())
+                .stripePriceId(row.getStripePriceId())
                 .owner(owner)
                 .birthDate(row.getBirthDate())
                 .sex(row.getSex())
