@@ -1,17 +1,25 @@
 package com.nc.horseretail.service;
 
+import com.nc.horseretail.dto.horse.HorseCreateResponse;
 import com.nc.horseretail.dto.horse.HorseRequest;
 import com.nc.horseretail.dto.horse.HorseResponse;
 import com.nc.horseretail.model.horse.MainUse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
 
 public interface HorseService {
 
-    void createHorse(HorseRequest request, UUID userId);
+    HorseCreateResponse createHorse(HorseRequest request, UUID userId);
+
+    HorseCreateResponse createHorse(HorseRequest request,
+                                    UUID userId,
+                                    Double price,
+                                    List<MultipartFile> mediaFiles,
+                                    List<MultipartFile> documentFiles);
 
     long countTotalHorses();
 

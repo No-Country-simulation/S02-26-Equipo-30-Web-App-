@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -34,12 +33,11 @@ public class CloudinaryServiceImpl implements CloudinaryService {
 
         validateFile(file);
 
-        try (InputStream inputStream = file.getInputStream()) {
-
+        try {
             Map<String, Object> options = buildUploadOptions(folder, file);
 
             Map<?, ?> result = cloudinary.uploader()
-                    .upload(inputStream, options);
+                    .upload(file.getBytes(), options);
 
             String secureUrl = (String) result.get("secure_url");
             String publicId = (String) result.get("public_id");
@@ -114,6 +112,7 @@ public class CloudinaryServiceImpl implements CloudinaryService {
     private boolean isAllowedContentType(String contentType) {
 
         return contentType.startsWith("image/")
+                || contentType.startsWith("video/")
                 || contentType.equals("application/pdf");
     }
 
@@ -145,6 +144,10 @@ public class CloudinaryServiceImpl implements CloudinaryService {
 
         if (contentType.startsWith("image/")) {
             return "image";
+        }
+
+        if (contentType.startsWith("video/")) {
+            return "video";
         }
 
         if ("application/pdf".equals(contentType)) {
