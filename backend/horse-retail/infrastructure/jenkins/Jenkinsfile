@@ -12,6 +12,7 @@ def deployApp(Map config) {
         string(credentialsId: config.cloudinaryApiSecretCredentialId, variable: 'CLOUDINARY_API_SECRET'),
         string(credentialsId: config.mailUsernameCredentialId, variable: 'MAIL_USERNAME'),
         string(credentialsId: config.mailPasswordCredentialId, variable: 'MAIL_PASSWORD'),
+        string(credentialsId: config.stripeSecretKeyCredentialId, variable: 'STRIPE_SECRET_KEY'),
         usernamePassword(credentialsId: config.dockerCredentialId, usernameVariable: 'DUSER', passwordVariable: 'DPASS')
     ]
 
@@ -64,6 +65,10 @@ def deployApp(Map config) {
          envLines << "MAIL_SMTP_AUTH=true"
          envLines << "MAIL_SMTP_STARTTLS_ENABLE=true"
          envLines << "EMAIL_VERIFICATION_CODE_TTL_MINUTES=10"
+         envLines << "STRIPE_SECRET_KEY=${clean(STRIPE_SECRET_KEY)}"
+         envLines << "ADMIN_EMAIL=admin@horsetrust.com"
+         envLines << "ADMIN_PASSWORD=admin112233"
+         envLines << "USER_PASSWORD=user112233"
 
          writeFile file: 'remote.env', text: envLines.join('\n')
 
@@ -160,6 +165,7 @@ pipeline {
                         cloudinaryApiSecretCredentialId: 'horsetrust-cloudinary-api-secret',
                         mailUsernameCredentialId: 'horsetrust-mail-username',
                         mailPasswordCredentialId: 'horsetrust-mail-password',
+                        stripeSecretKeyCredentialId: 'horse-stripe-secret-key',
                         dockerCredentialId: env.DOCKERHUB_CRED
                     )
                  }
