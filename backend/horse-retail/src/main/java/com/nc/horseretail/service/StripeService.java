@@ -7,6 +7,10 @@ import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import com.nc.horseretail.repository.ListingRepository;
+import com.nc.horseretail.model.listing.Listing;
+import com.nc.horseretail.model.listing.ListingStatus;
+
 
 
 import java.util.ArrayList;
@@ -18,6 +22,7 @@ import java.util.UUID;
 public class StripeService {
 
     private final HorseRepository horseRepository;
+    private final ListingRepository listingRepository;
 
     public String createCheckoutSession(List<UUID> horseIds) throws Exception {
 
@@ -28,11 +33,31 @@ public class StripeService {
             Horse horse = horseRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Horse not found"));
 
-            // TODO set listing price instead of hardcoded price id
+            List<Listing> listings = listingRepository
+                    .findByHorseIdAndStatus(horse.getId(), ListingStatus.ACTIVE);
+
+            if (listings.isEmpty()) {
+                throw new RuntimeException("Active listing not found for horse: " + horse.getName());
+            }
+
+            Listing listing = listings.get(0);
+
+            Long amount = Math.round(listing.getAskingPriceUsd() * 100);
+
             lineItems.add(
                     SessionCreateParams.LineItem.builder()
-                            .setPrice("horse.getStripePriceId()")
                             .setQuantity(1L)
+                            .setPriceData(
+                                    SessionCreateParams.LineItem.PriceData.builder()
+                                            .setCurrency("usd")
+                                            .setUnitAmount(amount)
+                                            .setProductData(
+                                                    SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                                            .setName(horse.getName())
+                                                            .build()
+                                            )
+                                            .build()
+                            )
                             .build()
             );
         }
@@ -47,6 +72,6 @@ public class StripeService {
 
         Session session = Session.create(params);
 
-        return session.getId();
+        return session.getUrl();
     }
 }
