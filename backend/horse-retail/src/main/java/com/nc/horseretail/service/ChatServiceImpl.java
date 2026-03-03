@@ -4,6 +4,7 @@ import com.nc.horseretail.dto.messaging.ConversationDetailResponse;
 import com.nc.horseretail.dto.messaging.ConversationSummaryResponse;
 import com.nc.horseretail.dto.messaging.MessageResponse;
 import com.nc.horseretail.dto.messaging.SendMessageRequest;
+import com.nc.horseretail.exception.BusinessException;
 import com.nc.horseretail.exception.ForbiddenOperationException;
 import com.nc.horseretail.exception.ResourceNotFoundException;
 import com.nc.horseretail.model.communication.Conversation;
@@ -48,7 +49,7 @@ public class ChatServiceImpl implements ChatService {
         validateAccess(conversation, sender);
 
         if (conversation.getStatus() == ConversationStatus.CLOSED) {
-            throw new IllegalStateException("Conversation is closed");
+            throw new BusinessException("Conversation is closed");
         }
 
         Message message = Message.builder()
@@ -77,7 +78,7 @@ public class ChatServiceImpl implements ChatService {
         Listing listing = getListingOrThrow(listingId);
 
         if (listing.getOwner().getId().equals(user.getId())) {
-            throw new IllegalStateException("You cannot start a conversation on your own listing");
+            throw new ForbiddenOperationException("You cannot start a conversation on your own listing");
         }
 
         Conversation conversation = conversationRepository
