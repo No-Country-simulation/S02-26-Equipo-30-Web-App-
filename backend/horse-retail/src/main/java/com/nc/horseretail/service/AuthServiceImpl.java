@@ -147,6 +147,9 @@ public class AuthServiceImpl implements AuthService {
 
         refreshTokenRepository.save(refreshTokenEntity);
 
+        user.setLastLoginAt(Instant.now());
+        userRepository.save(user);
+
         return AuthResponse.builder()
                 .token(accessToken)
                 .refreshToken(refreshToken)
