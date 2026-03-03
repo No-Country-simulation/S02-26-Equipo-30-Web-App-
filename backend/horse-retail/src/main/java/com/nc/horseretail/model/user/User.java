@@ -50,11 +50,13 @@ public class User implements Serializable {
     @Column(name = "app_role", nullable = false)
     private Role role;
 
+    @Builder.Default
     @Column(name = "email_verified", nullable = false)
-    private boolean emailVerified;
+    private boolean emailVerified = false;
 
+    @Builder.Default
     @Column(name = "account_enabled", nullable = false)
-    private boolean accountEnabled;
+    private boolean accountEnabled = true;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -78,8 +80,6 @@ public class User implements Serializable {
     @PrePersist
     void onCreate() {
         this.createdAt = Instant.now();
-        this.accountEnabled = true;
-        this.emailVerified = false;
         if (this.role == null) {
             this.role = Role.USER;
         }

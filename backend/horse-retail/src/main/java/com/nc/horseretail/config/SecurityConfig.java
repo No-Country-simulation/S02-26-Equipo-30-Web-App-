@@ -65,8 +65,7 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/api/v1/auth/**",
                                 "/api/v1/metrics/**",
-                                "/api/v1/media/**",
-                                "/api/temp/**"
+                                "/api/v1/media/**"
                         ).permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/chat/**").authenticated()

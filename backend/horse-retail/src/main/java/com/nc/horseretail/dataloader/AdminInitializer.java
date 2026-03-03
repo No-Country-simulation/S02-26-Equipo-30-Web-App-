@@ -31,6 +31,8 @@ public class AdminInitializer implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
 
+        validateConfiguration();
+
         if (!userRepository.existsByEmail(adminEmail)) {
 
             User admin = User.builder()
@@ -40,14 +42,31 @@ public class AdminInitializer implements ApplicationRunner {
                     .passwordHash(passwordEncoder.encode(adminPassword))
                     .role(Role.ADMIN)
                     .emailVerified(true)
+                    .accountEnabled(true)
                     .status(UserStatus.ACTIVE)
                     .emailVerified(true)
-                    .accountEnabled(true)
                     .build();
 
             userRepository.save(admin);
 
             log.info("Production admin user created: {}", adminEmail);
+
+        } else {
+            log.warn("Admin email '{}' is already in use. Skipping admin user creation.", adminEmail);
+        }
+    }
+
+    private void validateConfiguration() {
+        if (adminEmail == null || adminEmail.isBlank()) {
+            throw new IllegalStateException("Property 'app.admin.email' must be configured in production.");
+        }
+
+        if (adminPassword == null || adminPassword.isBlank()) {
+            throw new IllegalStateException("Property 'app.admin.password' must be configured in production.");
+        }
+
+        if (adminPassword.length() < 8) {
+            throw new IllegalStateException("Admin password must contain at least 8 characters.");
         }
     }
 }
