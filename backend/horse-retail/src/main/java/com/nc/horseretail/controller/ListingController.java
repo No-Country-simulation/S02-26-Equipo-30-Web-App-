@@ -1,6 +1,7 @@
 package com.nc.horseretail.controller;
 
 import com.nc.horseretail.config.SecurityUser;
+import com.nc.horseretail.dto.ListingFilterRequest;
 import com.nc.horseretail.dto.ListingRequest;
 import com.nc.horseretail.dto.ListingResponse;
 import com.nc.horseretail.service.ListingService;
@@ -12,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -54,18 +57,24 @@ public class ListingController {
     // ============================
     @Operation(
             summary = "Get or search listings",
-            description = "Returns paginated listings. Supports optional keyword filtering and sorting."
+            description = """ 
+                             Returns paginated listings.
+                             Supports filtering by keyword, discipline,breed,
+                              location and price range.
+                              Results can be sorted.
+                          """
     )
     @ApiResponse(responseCode = "200", description = "Listings retrieved successfully")
     @GetMapping
     public ResponseEntity<Page<ListingResponse>> getListings(
-            @RequestParam(required = false) String keyword,
+            @ModelAttribute ListingFilterRequest filter,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
             Pageable pageable) {
 
-        log.info("Fetching listings. keyword={}", keyword);
+        log.info("Fetching listings with filters: {}", filter);
 
         return ResponseEntity.ok(
-                listingService.getListings(keyword, pageable)
+                listingService.searchListings(filter, pageable)
         );
     }
 
