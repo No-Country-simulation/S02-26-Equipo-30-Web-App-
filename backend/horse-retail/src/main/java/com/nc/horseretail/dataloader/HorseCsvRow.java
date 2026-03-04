@@ -18,10 +18,6 @@ public class HorseCsvRow {
     // HORSE
     // =========================
     private String horseId;
-    // ================
-    // STRIPE
-    //=================
-    private String stripePriceId;
 
     private LocalDate birthDate;
     private String sex;                 // h_sex
@@ -50,7 +46,7 @@ public class HorseCsvRow {
     private String listingId;
     private String sellerId;
     private String listingStatus;       // l_listing_status
-    private Double askingPriceUsd;
+    private Double askingPriceUsd;      // Stripe
     private Double priceVsMarketRatio;  // l_price_vs_market_ratio
     private Double anomalyScore;        // l_anomaly_score
     private Boolean verifiedListing;
