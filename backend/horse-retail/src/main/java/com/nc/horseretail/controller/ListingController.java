@@ -4,6 +4,7 @@ import com.nc.horseretail.config.SecurityUser;
 import com.nc.horseretail.dto.ListingFilterRequest;
 import com.nc.horseretail.dto.ListingRequest;
 import com.nc.horseretail.dto.ListingResponse;
+import com.nc.horseretail.dto.listing.ExploreHorseCardResponse;
 import com.nc.horseretail.service.ListingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -75,6 +76,28 @@ public class ListingController {
 
         return ResponseEntity.ok(
                 listingService.searchListings(filter, pageable)
+        );
+    }
+
+    // ============================
+    // PUBLIC EXPLORE CARDS
+    // ============================
+    @Operation(
+            summary = "Get public horse cards for Explore",
+            description = """
+                    Public endpoint for the Explore screen.
+                    It returns the listing id, horse id, owner info, price, trust score and public media needed
+                    to render a horse card in a single request.
+                    """
+    )
+    @ApiResponse(responseCode = "200", description = "Explore cards retrieved successfully")
+    @GetMapping("/explore")
+    public ResponseEntity<Page<ExploreHorseCardResponse>> getExploreCards(
+            @RequestParam(required = false) String keyword,
+            Pageable pageable) {
+
+        return ResponseEntity.ok(
+                listingService.getExploreCards(keyword, pageable)
         );
     }
 

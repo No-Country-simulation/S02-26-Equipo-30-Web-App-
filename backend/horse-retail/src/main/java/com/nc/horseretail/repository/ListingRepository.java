@@ -5,6 +5,7 @@ import com.nc.horseretail.model.listing.ListingStatus;
 import com.nc.horseretail.model.user.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -21,8 +22,10 @@ public interface ListingRepository extends JpaRepository<Listing, UUID>, JpaSpec
 
     List<Listing> findAllByHorseId(UUID horseId);
 
+    @EntityGraph(attributePaths = {"horse", "owner"})
     Page<Listing> findByStatus(ListingStatus status, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"horse", "owner"})
     @Query("""
                 SELECT l FROM Listing l
                 WHERE l.status = 'ACTIVE'

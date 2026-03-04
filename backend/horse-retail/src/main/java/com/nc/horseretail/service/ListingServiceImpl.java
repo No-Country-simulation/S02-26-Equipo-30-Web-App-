@@ -3,9 +3,13 @@ package com.nc.horseretail.service;
 import com.nc.horseretail.dto.ListingFilterRequest;
 import com.nc.horseretail.dto.ListingRequest;
 import com.nc.horseretail.dto.ListingResponse;
+import com.nc.horseretail.dto.listing.ExploreHorseCardResponse;
 import com.nc.horseretail.exception.BusinessException;
 import com.nc.horseretail.exception.ForbiddenOperationException;
 import com.nc.horseretail.exception.ResourceNotFoundException;
+import com.nc.horseretail.model.media.MediaAsset;
+import com.nc.horseretail.model.media.MediaType;
+import com.nc.horseretail.model.media.MediaVisibility;
 import com.nc.horseretail.mapper.ListingMapper;
 import com.nc.horseretail.model.horse.Horse;
 import com.nc.horseretail.model.listing.Listing;
@@ -14,6 +18,7 @@ import com.nc.horseretail.model.listing.ListingStatus;
 import com.nc.horseretail.model.user.User;
 import com.nc.horseretail.repository.HorseRepository;
 import com.nc.horseretail.repository.ListingRepository;
+import com.nc.horseretail.repository.MediaAssetRepository;
 import com.nc.horseretail.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +27,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -33,6 +43,8 @@ public class ListingServiceImpl implements ListingService {
     private final ListingRepository listingRepository;
     private final HorseRepository horseRepository;
     private final UserRepository userRepository;
+    private final MediaAssetRepository mediaAssetRepository;
+    private final ExploreFormattingService exploreFormattingService;
 
     private static final String LISTING_NOT_FOUND = "Listing not found with id: %s";
 
@@ -81,6 +93,23 @@ public class ListingServiceImpl implements ListingService {
         }
 
         return page.map(listingMapper::toDto);
+    }
+
+    @Override
+    public Page<ExploreHorseCardResponse> getExploreCards(String keyword, Pageable pageable) {
+        Page<Listing> page = getActiveListings(keyword, pageable);
+
+        List<UUID> horseIds = page.getContent().stream()
+                .map(listing -> listing.getHorse().getId())
+                .toList();
+
+        Map<UUID, List<MediaAsset>> mediaByHorseId = mediaAssetRepository
+                .findByHorseIdInAndVisibility(horseIds, MediaVisibility.PUBLIC)
+                .stream()
+                .collect(Collectors.groupingBy(media -> media.getHorse().getId()));
+
+        // The explore card is built from listing + horse + public media so frontend can render it with a single call.
+        return page.map(listing -> toExploreCard(listing, mediaByHorseId.get(listing.getHorse().getId())));
     }
 
     @Override
@@ -299,6 +328,14 @@ public class ListingServiceImpl implements ListingService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException(LISTING_NOT_FOUND.formatted(id)));
     }
+
+    private Page<Listing> getActiveListings(String keyword, Pageable pageable) {
+        if (keyword == null || keyword.isBlank()) {
+            return listingRepository.findByStatus(ListingStatus.ACTIVE, pageable);
+        }
+        return listingRepository.searchActive(keyword.trim(), pageable);
+    }
+
     private User findUserOrThrow(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() ->
@@ -314,5 +351,50 @@ public class ListingServiceImpl implements ListingService {
         }
 
         return listing;
+    }
+
+    private ExploreHorseCardResponse toExploreCard(Listing listing, List<MediaAsset> mediaAssets) {
+        Horse horse = listing.getHorse();
+        MediaAsset coverImage = firstPublicImage(mediaAssets);
+
+        return ExploreHorseCardResponse.builder()
+                .listingId(listing.getId())
+                .horseId(horse.getId())
+                .ownerId(listing.getOwner().getId())
+                .ownerName(listing.getOwner().getFullName())
+                .horseName(horse.getName())
+                .breed(horse.getBreed())
+                .sex(horse.getSex())
+                .ageYears(exploreFormattingService.calculateAgeYears(horse.getBirthDate()))
+                .heightM(horse.getHeightM())
+                .discipline(exploreFormattingService.formatEnumLabel(horse.getMainUse()))
+                .price(listing.getAskingPriceUsd())
+                .listingStatus(listing.getStatus().name())
+                .trustScore(exploreFormattingService.normalizeTrustScore(horse.getTrustScore()))
+                .trustLabel(exploreFormattingService.formatTrustLabel(horse.getTrustScore()))
+                .country(horse.getLocation() != null ? horse.getLocation().getCountry() : null)
+                .region(horse.getLocation() != null ? horse.getLocation().getRegion() : null)
+                .city(horse.getLocation() != null ? horse.getLocation().getCity() : null)
+                .locationLabel(exploreFormattingService.formatLocationLabel(horse.getLocation()))
+                .coverImageUrl(coverImage != null ? coverImage.getUrl() : null)
+                .hasVideo(hasPublicVideo(mediaAssets))
+                .vip(false)
+                .build();
+    }
+
+    private MediaAsset firstPublicImage(List<MediaAsset> mediaAssets) {
+        if (mediaAssets == null || mediaAssets.isEmpty()) {
+            return null;
+        }
+
+        return mediaAssets.stream()
+                .filter(media -> media.getMediaType() == MediaType.IMAGE)
+                .min(Comparator.comparing(MediaAsset::getUploadedAt))
+                .orElse(null);
+    }
+
+    private boolean hasPublicVideo(List<MediaAsset> mediaAssets) {
+        return mediaAssets != null && mediaAssets.stream()
+                .anyMatch(media -> media.getMediaType() == MediaType.VIDEO);
     }
 }

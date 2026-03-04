@@ -3,6 +3,7 @@ package com.nc.horseretail.service;
 import com.nc.horseretail.dto.ListingFilterRequest;
 import com.nc.horseretail.dto.ListingRequest;
 import com.nc.horseretail.dto.ListingResponse;
+import com.nc.horseretail.dto.listing.ExploreHorseCardResponse;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,6 +14,8 @@ public interface ListingService {
     ListingResponse createListing(ListingRequest dto, UUID userId);
 
     Page<ListingResponse> getListings(String keyword, Pageable pageable);
+
+    Page<ExploreHorseCardResponse> getExploreCards(String keyword, Pageable pageable);
 
     ListingResponse getListingById(UUID id);
 
