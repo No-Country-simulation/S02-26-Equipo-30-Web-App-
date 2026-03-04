@@ -3,8 +3,8 @@ package com.nc.horseretail.model.listing;
 public enum ListingStatus {
     DRAFT,
     PUBLIC,
-    UNDER_REVIEW,
     ACTIVE,
+    UNDER_REVIEW,
     CLOSED,
     PAUSED,
     SOLD,
@@ -12,5 +12,4 @@ public enum ListingStatus {
     EXPIRED,
     WITHDRAWN,
     DELETED
-
 }

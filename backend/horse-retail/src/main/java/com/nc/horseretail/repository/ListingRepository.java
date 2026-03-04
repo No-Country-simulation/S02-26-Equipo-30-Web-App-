@@ -6,6 +6,7 @@ import com.nc.horseretail.model.user.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -14,7 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface ListingRepository extends JpaRepository<Listing, UUID> {
+public interface ListingRepository extends JpaRepository<Listing, UUID>, JpaSpecificationExecutor<Listing> {
 
     boolean existsByHorseIdAndStatus(UUID horseId, ListingStatus status);
 
@@ -23,13 +24,13 @@ public interface ListingRepository extends JpaRepository<Listing, UUID> {
     Page<Listing> findByStatus(ListingStatus status, Pageable pageable);
 
     @Query("""
-    SELECT l FROM Listing l
-    WHERE l.status = 'ACTIVE'
-    AND (
-        :keyword IS NULL OR
-        LOWER(l.horse.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
-    )
-""")
+                SELECT l FROM Listing l
+                WHERE l.status = 'ACTIVE'
+                AND (
+                    :keyword IS NULL OR
+                    LOWER(l.horse.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                )
+            """)
     Page<Listing> searchActive(String keyword, Pageable pageable);
 
     Page<Listing> findByOwner(User owner, Pageable pageable);
@@ -39,11 +40,13 @@ public interface ListingRepository extends JpaRepository<Listing, UUID> {
     long countByOwner(User owner);
 
     @Query("""
-       SELECT COALESCE(SUM(l.askingPriceUsd), 0)
-       FROM Listing l
-       WHERE l.status = com.nc.horseretail.model.listing.ListingStatus.SOLD
-       """)
+            SELECT COALESCE(SUM(l.askingPriceUsd), 0)
+            FROM Listing l
+            WHERE l.status = com.nc.horseretail.model.listing.ListingStatus.SOLD
+            """)
     BigDecimal getTotalRevenue();
 
     List<Listing> findByHorseIdAndStatus(UUID horseId, ListingStatus listingStatus);
+
+
 }

@@ -1,5 +1,6 @@
 package com.nc.horseretail.service;
 
+import com.nc.horseretail.dto.ListingFilterRequest;
 import com.nc.horseretail.dto.ListingRequest;
 import com.nc.horseretail.dto.ListingResponse;
 import com.nc.horseretail.exception.BusinessException;
@@ -8,6 +9,7 @@ import com.nc.horseretail.exception.ResourceNotFoundException;
 import com.nc.horseretail.mapper.ListingMapper;
 import com.nc.horseretail.model.horse.Horse;
 import com.nc.horseretail.model.listing.Listing;
+import com.nc.horseretail.model.listing.ListingSpecification;
 import com.nc.horseretail.model.listing.ListingStatus;
 import com.nc.horseretail.model.user.User;
 import com.nc.horseretail.repository.HorseRepository;
@@ -17,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
@@ -90,6 +93,17 @@ public class ListingServiceImpl implements ListingService {
         }
 
         return listingMapper.toDto(listing);
+    }
+
+    @Override
+    public Page<ListingResponse> searchListings(
+            ListingFilterRequest filter,
+            Pageable pageable) {
+
+        Specification<Listing> spec = ListingSpecification.withFilters(filter);
+
+        return listingRepository.findAll(spec, pageable)
+                .map(listingMapper::toDto);
     }
 
     // ============================
