@@ -41,5 +41,4 @@ public class HorseResponse {
     private TrustScoreStatus trustScoreStatus;
     private Instant trustScoreUpdatedAt;
     private String trustModelVersion;
-    //private String stripePriceId;
 }

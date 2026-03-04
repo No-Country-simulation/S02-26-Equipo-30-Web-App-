@@ -49,6 +49,7 @@ public class StripeController {
     @PostMapping("/checkout")
     public Map<String,String> checkout(@RequestBody List<UUID> listingIds) throws Exception {
 
+        //TODO rehacer y separar responsabilidades
         Stripe.apiKey = stripeSecretKey;
 
         List<SessionCreateParams.LineItem> items = new ArrayList<>();

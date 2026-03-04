@@ -26,6 +26,8 @@ public class StripeService {
 
     public String createCheckoutSession(List<UUID> horseIds) throws Exception {
 
+        //TODO Este método va????
+
         List<SessionCreateParams.LineItem> lineItems = new ArrayList<>();
 
         for(UUID id : horseIds) {

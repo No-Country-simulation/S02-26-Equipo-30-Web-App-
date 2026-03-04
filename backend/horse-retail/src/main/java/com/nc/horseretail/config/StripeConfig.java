@@ -17,6 +17,5 @@ public class StripeConfig {
         if (stripeSecretKey != null && !stripeSecretKey.isBlank()) {
             Stripe.apiKey = stripeSecretKey;
         }
-
     }
 }
