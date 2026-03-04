@@ -33,27 +33,13 @@ public class AdminInitializer implements ApplicationRunner {
 
         validateConfiguration();
 
-        if (!userRepository.existsByEmail(adminEmail)) {
+        // Keep the production admin in sync with configured credentials on every startup.
+        User admin = userRepository.findByEmail(adminEmail)
+                .map(this::refreshAdminAccount)
+                .orElseGet(this::buildAdminAccount);
 
-            User admin = User.builder()
-                    .email(adminEmail)
-                    .username(adminEmail)
-                    .fullName("System Admin")
-                    .passwordHash(passwordEncoder.encode(adminPassword))
-                    .role(Role.ADMIN)
-                    .emailVerified(true)
-                    .accountEnabled(true)
-                    .status(UserStatus.ACTIVE)
-                    .emailVerified(true)
-                    .build();
-
-            userRepository.save(admin);
-
-            log.info("Production admin user created: {}", adminEmail);
-
-        } else {
-            log.warn("Admin email '{}' is already in use. Skipping admin user creation.", adminEmail);
-        }
+        userRepository.save(admin);
+        log.info("Production admin user synchronized: {}", adminEmail);
     }
 
     private void validateConfiguration() {
@@ -68,5 +54,29 @@ public class AdminInitializer implements ApplicationRunner {
         if (adminPassword.length() < 8) {
             throw new IllegalStateException("Admin password must contain at least 8 characters.");
         }
+    }
+
+    private User buildAdminAccount() {
+        return User.builder()
+                .email(adminEmail)
+                .username(adminEmail)
+                .fullName("System Admin")
+                .passwordHash(passwordEncoder.encode(adminPassword))
+                .role(Role.ADMIN)
+                .emailVerified(true)
+                .accountEnabled(true)
+                .status(UserStatus.ACTIVE)
+                .build();
+    }
+
+    private User refreshAdminAccount(User admin) {
+        admin.setUsername(adminEmail);
+        admin.setFullName("System Admin");
+        admin.setPasswordHash(passwordEncoder.encode(adminPassword));
+        admin.setRole(Role.ADMIN);
+        admin.setEmailVerified(true);
+        admin.setAccountEnabled(true);
+        admin.setStatus(UserStatus.ACTIVE);
+        return admin;
     }
 }
