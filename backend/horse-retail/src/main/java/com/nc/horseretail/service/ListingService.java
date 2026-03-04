@@ -1,5 +1,6 @@
 package com.nc.horseretail.service;
 
+import com.nc.horseretail.dto.ListingFilterRequest;
 import com.nc.horseretail.dto.ListingRequest;
 import com.nc.horseretail.dto.ListingResponse;
 import jakarta.validation.Valid;
@@ -14,6 +15,10 @@ public interface ListingService {
     Page<ListingResponse> getListings(String keyword, Pageable pageable);
 
     ListingResponse getListingById(UUID id);
+
+    Page<ListingResponse> searchListings(
+            ListingFilterRequest filter,
+            Pageable pageable);
 
     ListingResponse updateListing(UUID id, @Valid ListingRequest dto, UUID userId);
 

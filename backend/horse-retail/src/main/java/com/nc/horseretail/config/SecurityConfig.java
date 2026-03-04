@@ -3,6 +3,7 @@ package com.nc.horseretail.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -67,6 +68,7 @@ public class SecurityConfig {
                                 "/api/v1/metrics/**",
                                 "/api/v1/media/**"
                         ).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/listings/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/chat/**").authenticated()
                         .requestMatchers("/api/v1/media/upload").authenticated()
