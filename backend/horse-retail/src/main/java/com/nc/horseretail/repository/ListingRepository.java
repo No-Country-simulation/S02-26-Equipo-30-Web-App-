@@ -3,8 +3,11 @@ package com.nc.horseretail.repository;
 import com.nc.horseretail.model.listing.Listing;
 import com.nc.horseretail.model.listing.ListingStatus;
 import com.nc.horseretail.model.user.User;
+import org.jspecify.annotations.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -48,5 +51,6 @@ public interface ListingRepository extends JpaRepository<Listing, UUID>, JpaSpec
 
     List<Listing> findByHorseIdAndStatus(UUID horseId, ListingStatus listingStatus);
 
-
-}
+        @EntityGraph(attributePaths = {"horse", "horse.location", "owner"})
+        Page<Listing> findAll(Specification<Listing> spec, @NonNull Pageable pageable);
+    }

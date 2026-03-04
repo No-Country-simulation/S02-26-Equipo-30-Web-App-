@@ -23,6 +23,7 @@ public interface HorseMapper {
     // ==============================
     // READ
     // ==============================
+    @Named("toHorseResponse")
     HorseResponse toDto(Horse horse);
 
     // ==============================

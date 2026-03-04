@@ -15,6 +15,7 @@ import com.nc.horseretail.model.user.User;
 import com.nc.horseretail.repository.HorseRepository;
 import com.nc.horseretail.repository.ListingRepository;
 import com.nc.horseretail.repository.UserRepository;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -22,6 +23,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -98,12 +101,13 @@ public class ListingServiceImpl implements ListingService {
     @Override
     public Page<ListingResponse> searchListings(
             ListingFilterRequest filter,
-            Pageable pageable) {
+            @NonNull Pageable pageable) {
 
         Specification<Listing> spec = ListingSpecification.withFilters(filter);
 
-        return listingRepository.findAll(spec, pageable)
-                .map(listingMapper::toDto);
+        Page<Listing> listings = listingRepository.findAll(spec, pageable);
+
+        return listings.map(listingMapper::toDto);
     }
 
     // ============================

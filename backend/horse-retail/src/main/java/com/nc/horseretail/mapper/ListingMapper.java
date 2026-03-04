@@ -8,6 +8,7 @@ import org.mapstruct.*;
 
 @Mapper(
         componentModel = "spring",
+        uses = {HorseMapper.class},
         unmappedTargetPolicy = ReportingPolicy.IGNORE
 )
 public interface ListingMapper {
@@ -31,6 +32,7 @@ public interface ListingMapper {
     @Mapping(target = "ownerName", source = "owner.fullName")
     @Mapping(target = "price", source = "askingPriceUsd")
     @Mapping(target = "status", source = "status")
+    @Mapping(target = "horse", source = "horse", qualifiedByName = "toHorseResponse")
     ListingResponse toDto(Listing listing);
 
     // =========================
