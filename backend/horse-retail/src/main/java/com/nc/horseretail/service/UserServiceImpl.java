@@ -24,6 +24,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -171,7 +174,8 @@ public class UserServiceImpl implements UserService {
         User user = findActiveUser(userId);
 
         return horseRepository.findByOwner(user, pageable)
-                .map(userMapper::toHorseDto);
+                .map(userMapper::toHorseDto)
+                .map(this::attachListingId);
     }
 
     @Override
@@ -287,7 +291,11 @@ public class UserServiceImpl implements UserService {
 
         User user = findUserOrThrow(userId);
 
-        return user.getFavoriteHorses().stream().map(horseMapper::toDto).collect(Collectors.toSet());
+        Set<HorseResponse> favorites = user.getFavoriteHorses().stream()
+                .map(horseMapper::toDto)
+                .collect(Collectors.toSet());
+        attachListingIds(favorites);
+        return favorites;
     }
 
     // ============================
@@ -327,5 +335,38 @@ public class UserServiceImpl implements UserService {
         }
 
         return user;
+    }
+
+    private HorseResponse attachListingId(HorseResponse response) {
+        if (response == null || response.getId() == null) {
+            return response;
+        }
+
+        listingRepository.findByHorseIdAndStatus(response.getId(), ListingStatus.ACTIVE)
+                .stream()
+                .findFirst()
+                .ifPresent(listing -> response.setListingId(listing.getId()));
+        return response;
+    }
+
+    private void attachListingIds(Set<HorseResponse> responses) {
+        if (responses == null || responses.isEmpty()) {
+            return;
+        }
+
+        List<UUID> horseIds = responses.stream()
+                .map(HorseResponse::getId)
+                .filter(id -> id != null)
+                .toList();
+
+        if (horseIds.isEmpty()) {
+            return;
+        }
+
+        Map<UUID, UUID> listingIdsByHorseId = new HashMap<>();
+        listingRepository.findByHorseIdInAndStatus(horseIds, ListingStatus.ACTIVE)
+                .forEach(listing -> listingIdsByHorseId.putIfAbsent(listing.getHorse().getId(), listing.getId()));
+
+        responses.forEach(response -> response.setListingId(listingIdsByHorseId.get(response.getId())));
     }
 }

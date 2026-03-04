@@ -31,9 +31,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -94,13 +98,15 @@ public class HorseServiceImpl implements HorseService {
         if (sanitizedKeyword.isBlank()) {
             sanitizedKeyword = "";
         }
-        return horseRepository.search(sanitizedKeyword, mainUse, pageable).map(horseMapper::toDto);
+        return horseRepository.search(sanitizedKeyword, mainUse, pageable)
+                .map(horseMapper::toDto)
+                .map(this::attachListingId);
     }
 
     @Override
     public HorseResponse getHorseById(UUID id) {
         Horse horse = findByIdOrThrow(id);
-        return horseMapper.toDto(horse);
+        return attachListingId(horseMapper.toDto(horse));
     }
 
     @Override
@@ -113,7 +119,7 @@ public class HorseServiceImpl implements HorseService {
         horseMapper.updateEntityFromDto(request, horse);
         arithmeticTrustScoreService.applyTrustScore(horse);
         Horse savedHorse = horseRepository.save(horse);
-        return horseMapper.toDto(savedHorse);
+        return attachListingId(horseMapper.toDto(savedHorse));
     }
 
     @Override
@@ -141,10 +147,12 @@ public class HorseServiceImpl implements HorseService {
     @Override
     public List<HorseResponse> getMyHorses(UUID userId) {
         User user = getUserOrThrow(userId);
-        return horseRepository.findAllByOwner(user)
+        List<HorseResponse> responses = horseRepository.findAllByOwner(user)
                 .stream()
                 .map(horseMapper::toDto)
                 .toList();
+        attachListingIds(responses);
+        return responses;
     }
 
     @Override
@@ -283,5 +291,39 @@ public class HorseServiceImpl implements HorseService {
         }
 
         throw new BusinessException("Unsupported media file type");
+    }
+
+    private HorseResponse attachListingId(HorseResponse response) {
+        if (response == null || response.getId() == null) {
+            return response;
+        }
+
+        listingRepository.findByHorseIdAndStatus(response.getId(), ListingStatus.ACTIVE)
+                .stream()
+                .findFirst()
+                .ifPresent(listing -> response.setListingId(listing.getId()));
+        return response;
+    }
+
+    private void attachListingIds(Collection<HorseResponse> responses) {
+        if (responses == null || responses.isEmpty()) {
+            return;
+        }
+
+        List<UUID> horseIds = responses.stream()
+                .map(HorseResponse::getId)
+                .filter(id -> id != null)
+                .toList();
+
+        if (horseIds.isEmpty()) {
+            return;
+        }
+
+        Map<UUID, UUID> listingIdsByHorseId = new HashMap<>();
+        for (Listing listing : listingRepository.findByHorseIdInAndStatus(horseIds, ListingStatus.ACTIVE)) {
+            listingIdsByHorseId.putIfAbsent(listing.getHorse().getId(), listing.getId());
+        }
+
+        responses.forEach(response -> response.setListingId(listingIdsByHorseId.get(response.getId())));
     }
 }

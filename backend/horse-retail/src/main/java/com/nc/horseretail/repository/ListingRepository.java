@@ -12,6 +12,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -50,6 +51,5 @@ public interface ListingRepository extends JpaRepository<Listing, UUID>, JpaSpec
     BigDecimal getTotalRevenue();
 
     List<Listing> findByHorseIdAndStatus(UUID horseId, ListingStatus listingStatus);
-
-
+    List<Listing> findByHorseIdInAndStatus(Collection<UUID> horseIds, ListingStatus listingStatus);
 }

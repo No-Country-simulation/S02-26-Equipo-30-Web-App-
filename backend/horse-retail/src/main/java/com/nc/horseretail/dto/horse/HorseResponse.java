@@ -17,6 +17,8 @@ import java.util.UUID;
 public class HorseResponse {
 
     private UUID id;
+    // Helps clients traverse horse -> listing without extra discovery calls.
+    private UUID listingId;
     private String name;
     private LocalDate birthDate;
     private String sex;
