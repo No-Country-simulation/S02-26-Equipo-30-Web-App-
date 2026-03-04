@@ -29,10 +29,10 @@ public class StripeServiceImpl implements StripeService {
 
     private final ListingRepository listingRepository;
 
-    @Value("${app.checkout.success-url:http://localhost:3000/success}")
+    @Value("${app.checkout.success-url}")
     private String successUrl;
 
-    @Value("${app.checkout.cancel-url:http://localhost:3000/cancel}")
+    @Value("${app.checkout.cancel-url}")
     private String cancelUrl;
 
     @Override
