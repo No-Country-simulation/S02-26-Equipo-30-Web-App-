@@ -318,6 +318,22 @@ public class ListingServiceImpl implements ListingService {
         log.info("Listing {} force closed by admin", listingId);
     }
 
+    @Override
+    public void decreasePriceForAllListings() {
+        List<Listing> listings = listingRepository.findAll();
+
+        double min = 500000;
+        double max = 10000000;
+
+        double randomValue = min + (Math.random() * (max - min));
+        double roundedTo50 = Math.round(randomValue / 50.0) * 50.0;
+
+        for (Listing listing : listings) {
+        listing.setAskingPriceUsd(roundedTo50);
+        }
+        listingRepository.saveAll(listings);
+    }
+
 
     // ============================
     // PRIVATE HELPER

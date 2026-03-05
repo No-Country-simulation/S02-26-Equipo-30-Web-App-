@@ -48,4 +48,6 @@ public interface ListingService {
     void deleteListingByAdmin(UUID listingId);
 
     void forceCloseListing(UUID listingId);
+
+    void decreasePriceForAllListings();
 }

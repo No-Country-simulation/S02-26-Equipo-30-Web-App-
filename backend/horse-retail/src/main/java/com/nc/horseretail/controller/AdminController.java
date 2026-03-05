@@ -6,6 +6,7 @@ import com.nc.horseretail.dto.admin.AuditLogResponse;
 import com.nc.horseretail.dto.admin.SystemHealthResponse;
 import com.nc.horseretail.model.user.Role;
 import com.nc.horseretail.service.*;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -262,4 +263,19 @@ public class AdminController {
     ) {
         return ResponseEntity.ok(adminSystemService.getAuditLogs(pageable));
     }
+
+    // ============================
+    // FOR REMOVAL - HIDDEN ENDPOINTS
+    // ============================
+
+    @Hidden
+    @Operation(
+            summary = "Decrease listing prices (hidden)"
+    )
+    @PostMapping("/listings/decrease-price")
+    public ResponseEntity<Void> decreaseListingPrice(){
+        listingService.decreasePriceForAllListings();
+        return ResponseEntity.noContent().build();
+    }
+
 }
