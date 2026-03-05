@@ -65,13 +65,15 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**",
                                 "/api/v1/auth/**",
-                                "/api/v1/metrics/**",
+                                "/api/v1/metrics/**"
+                        ).permitAll()
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/v1/listings/**",
+                                "/api/v1/horses/**",
                                 "/api/v1/media/**"
                         ).permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/listings/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/chat/**").authenticated()
-                        .requestMatchers("/api/v1/media/upload").authenticated()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session ->
