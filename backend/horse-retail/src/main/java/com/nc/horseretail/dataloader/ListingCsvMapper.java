@@ -17,11 +17,17 @@ public class ListingCsvMapper {
 
     public Listing toEntity(HorseCsvRow row, Horse horse, User user) {
 
+        double min = 500000;
+        double max = 10000000;
+
+        double randomValue = min + (Math.random() * (max - min));
+        double roundedTo50 = Math.round(randomValue / 50.0) * 50.0;
+
         return Listing.builder()
                 .externalId(row.getListingId())
                 .owner(user)
                 .horse(horse)
-                .askingPriceUsd(row.getAskingPriceUsd())
+                .askingPriceUsd(roundedTo50)
                 .status(mapStatus(row.getListingStatus()))
                 .createdAt(mapCreatedAt(row.getListingCreatedAt()))
                 .build();
