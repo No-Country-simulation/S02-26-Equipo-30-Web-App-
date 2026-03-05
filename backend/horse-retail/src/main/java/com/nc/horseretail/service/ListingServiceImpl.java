@@ -322,15 +322,16 @@ public class ListingServiceImpl implements ListingService {
     public void decreasePriceForAllListings() {
         List<Listing> listings = listingRepository.findAll();
 
-        double min = 500000;
-        double max = 10000000;
-
-        double randomValue = min + (Math.random() * (max - min));
-        double roundedTo50 = Math.round(randomValue / 50.0) * 50.0;
+        double min = 30000;
+        double max = 500000;
 
         for (Listing listing : listings) {
-        listing.setAskingPriceUsd(roundedTo50);
+            double randomValue = min + (Math.random() * (max - min));
+            double roundedTo50 = Math.round(randomValue / 50.0) * 50.0;
+
+            listing.setAskingPriceUsd(roundedTo50);
         }
+
         listingRepository.saveAll(listings);
     }
 
